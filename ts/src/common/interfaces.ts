@@ -291,8 +291,9 @@ export class DsError {
       return this.msg;
     }
     if (this.type) {
-      // TODO, return normal case instead of camel case
-      return this.type;
+      // Convert camelCase to Title Case
+      const result = this.type.replace(/([A-Z])/g, " $1");
+      return result.charAt(0).toUpperCase() + result.slice(1);
     }
     return 'Error';
   }

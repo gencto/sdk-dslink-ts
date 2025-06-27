@@ -29,8 +29,11 @@ export class RemoveController implements RequestUpdater {
   }
 
   onUpdate(status: StreamStatus, updates: any[], columns: any[], meta: object, error: DsError) {
-    // TODO implement error
-    this.completer.complete(new RequesterUpdate(status));
+    if (error) {
+      this.completer.completeError(error);
+    } else {
+      this.completer.complete(new RequesterUpdate(status));
+    }
   }
 
   onDisconnect() {}

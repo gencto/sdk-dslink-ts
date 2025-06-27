@@ -193,6 +193,8 @@ export class ValueSubscriber {
   cachingQueue: boolean = false;
 
   _persist: boolean = false;
+  _lastCallTimestamp: number = 0; // Timestamp of the last addValue call
+  static readonly CALL_INTERVAL_MS = 100; // Minimum interval between calls in milliseconds
 
   set persist(val: boolean) {
     if (val === this._persist) return;
@@ -217,6 +219,16 @@ export class ValueSubscriber {
   _isCacheValid: boolean = true;
 
   addValue(val: ValueUpdate) {
+    const now = Date.now();
+    if (now - this._lastCallTimestamp < ValueSubscriber.CALL_INTERVAL_MS) {
+      // If called too frequently, log a warning or handle as per specific requirements
+      // For now, we'll just ignore the call to prevent spamming.
+      // Alternatively, queue the update or merge it.
+      console.warn(`ValueSubscriber for ${this.node.path}: addValue called too frequently. Ignoring update.`);
+      return;
+    }
+    this._lastCallTimestamp = now;
+
     val = val.cloneForAckQueue();
     if (this._caching && this._isCacheValid) {
       this.lastValues.push(val);

@@ -191,10 +191,6 @@ export class HttpClientLink extends ClientLink {
     }
     //    logger.info(formatLogMessage("Connecting to ${_conn}"));
 
-    // TODO: This runZoned is due to a bug in the DartVM
-    // https://github.com/dart-lang/sdk/issues/31275
-    // When it is fixed, we should go back to a regular try-catch
-
     try {
       let requestJson: any = {
         publicKey: this.privateKey.publicKey.qBase64,

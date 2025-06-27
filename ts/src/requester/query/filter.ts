@@ -68,7 +68,7 @@ abstract class ValueFilter extends QueryFilter {
   target: any;
   live: boolean;
   _ready = false;
-  _invalid = false;
+  _errorMessages: string[] = [];
 
   protected constructor(filter: FilterStructure) {
     super();
@@ -78,7 +78,7 @@ abstract class ValueFilter extends QueryFilter {
 
   start() {
     if (!this.field) {
-      this._invalid = true;
+      this._errorMessages.push("Field is not defined for the filter.");
       this._ready = true;
       return;
     }
@@ -108,7 +108,9 @@ abstract class ValueFilter extends QueryFilter {
     if (!this._ready) {
       return [false, false];
     }
-    if (this._invalid) {
+    if (this._errorMessages.length > 0) {
+      // If there are error messages, the filter is considered invalid for matching purposes,
+      // but ready in terms of its lifecycle (it has attempted to process).
       return [false, true];
     }
     return [this.compare(), true];
@@ -119,8 +121,13 @@ abstract class ValueFilter extends QueryFilter {
   listener: Closable;
   subscribeCallback = (update: ValueUpdate) => {
     this.value = update.value;
-    // TODO maintain list of error state
-    this._invalid = Boolean(update.status);
+    if (update.status && update.status !== 'ok') { // Assuming 'ok' or lack of status means no error
+      this._errorMessages.push(`Error status: ${update.status}`);
+    }
+    // Potentially, clear errors if a new valid update arrives
+    // else {
+    //   this._errorMessages = [];
+    // }
     this._ready = true;
     this.onChange();
     if (!this.live && this.listener) {

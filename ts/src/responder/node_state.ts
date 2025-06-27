@@ -26,7 +26,7 @@ export class LocalNode extends Node<LocalNode> {
 
   addChild(name: string, node: LocalNode) {
     if (node.provider !== this.provider) {
-      // TODO log warning
+      console.warn(`Attempting to add child node "${name}" with a different provider to parent "${this.path}".`);
       return;
     }
     if (this.children.has(name)) {

@@ -40,6 +40,8 @@ export class Response implements ConnectionProcessor {
   }
 
   ackReceived(receiveAckId: number, startTime: number, currentTime: number) {
-    // TODO: implement ackReceived
+    // Basic acknowledgment logging. Specific logic for handling ACKs (e.g., clearing queues)
+    // would depend on the broader ACK strategy in the system.
+    console.log(`Response RID ${this.rid}: Received ACK ID ${receiveAckId}. Start time: ${startTime}, Current time: ${currentTime}`);
   }
 }

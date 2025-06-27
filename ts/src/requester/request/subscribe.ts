@@ -58,13 +58,20 @@ export class ReqSubscribeListener implements Closable {
 /** @ignore */
 export class SubscribeController implements RequestUpdater {
   request: SubscribeRequest;
+  disconnected: boolean = false;
 
   onDisconnect() {
-    // TODO: implement onDisconnect
+    this.disconnected = true;
+    console.log('SubscribeController: Disconnected');
+    // Add any specific resource cleanup or state change needed on disconnect
   }
 
   onReconnect() {
-    // TODO: implement onReconnect
+    this.disconnected = false;
+    console.log('SubscribeController: Reconnected');
+    if (this.request) {
+      this.request.resend();
+    }
   }
 
   onUpdate(status: string, updates: any[], columns: any[], meta: {[key: string]: any}, error: DsError) {
