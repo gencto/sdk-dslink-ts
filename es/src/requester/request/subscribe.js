@@ -41,11 +41,20 @@ export class ReqSubscribeListener {
 /// real logic is in SubscribeRequest itself
 /** @ignore */
 export class SubscribeController {
+    constructor() {
+        this.disconnected = false;
+    }
     onDisconnect() {
-        // TODO: implement onDisconnect
+        this.disconnected = true;
+        console.log('SubscribeController: Disconnected');
+        // Add any specific resource cleanup or state change needed on disconnect
     }
     onReconnect() {
-        // TODO: implement onReconnect
+        this.disconnected = false;
+        console.log('SubscribeController: Reconnected');
+        if (this.request) {
+            this.request.resend();
+        }
     }
     onUpdate(status, updates, columns, meta, error) {
         // do nothing

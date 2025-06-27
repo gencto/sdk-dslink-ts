@@ -137,6 +137,7 @@ export class ValueSubscriber {
         this._caching = false;
         this.cachingQueue = false;
         this._persist = false;
+        this._lastCallTimestamp = 0; // Timestamp of the last addValue call
         this._isCacheValid = true;
         this.response = response;
         this.node = node;
@@ -180,6 +181,15 @@ export class ValueSubscriber {
         }
     }
     addValue(val) {
+        const now = Date.now();
+        if (now - this._lastCallTimestamp < ValueSubscriber.CALL_INTERVAL_MS) {
+            // If called too frequently, log a warning or handle as per specific requirements
+            // For now, we'll just ignore the call to prevent spamming.
+            // Alternatively, queue the update or merge it.
+            console.warn(`ValueSubscriber for ${this.node.path}: addValue called too frequently. Ignoring update.`);
+            return;
+        }
+        this._lastCallTimestamp = now;
         val = val.cloneForAckQueue();
         if (this._caching && this._isCacheValid) {
             this.lastValues.push(val);
@@ -340,4 +350,5 @@ export class ValueSubscriber {
         this.node.setSubscriber(null);
     }
 }
+ValueSubscriber.CALL_INTERVAL_MS = 100; // Minimum interval between calls in milliseconds
 //# sourceMappingURL=subscribe.js.map

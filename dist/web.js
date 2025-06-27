@@ -119,22 +119,25 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   return newRequire;
 })({"DPC0":[function(require,module,exports) {
 'use strict';
+
 /**
  * Custom implementation of a double ended queue.
  */
-
-function Denque(array) {
+function Denque(array, options) {
+  var options = options || {};
+  this._capacity = options.capacity;
   this._head = 0;
   this._tail = 0;
-  this._capacityMask = 0x3;
-  this._list = new Array(4);
-
   if (Array.isArray(array)) {
     this._fromArray(array);
+  } else {
+    this._capacityMask = 0x3;
+    this._list = new Array(4);
   }
 }
+
 /**
- * -------------
+ * --------------
  *  PUBLIC API
  * -------------
  */
@@ -147,100 +150,91 @@ function Denque(array) {
  * @param index
  * @returns {*}
  */
-
-
 Denque.prototype.peekAt = function peekAt(index) {
-  var i = index; // expect a number or return undefined
-
+  var i = index;
+  // expect a number or return undefined
   if (i !== (i | 0)) {
     return void 0;
   }
-
   var len = this.size();
   if (i >= len || i < -len) return undefined;
   if (i < 0) i += len;
   i = this._head + i & this._capacityMask;
   return this._list[i];
 };
+
 /**
- * Alias for peakAt()
+ * Alias for peekAt()
  * @param i
  * @returns {*}
  */
-
-
 Denque.prototype.get = function get(i) {
   return this.peekAt(i);
 };
+
 /**
  * Returns the first item in the list without removing it.
  * @returns {*}
  */
-
-
 Denque.prototype.peek = function peek() {
   if (this._head === this._tail) return undefined;
   return this._list[this._head];
 };
+
 /**
  * Alias for peek()
  * @returns {*}
  */
-
-
 Denque.prototype.peekFront = function peekFront() {
   return this.peek();
 };
+
 /**
  * Returns the item that is at the back of the queue without removing it.
  * Uses peekAt(-1)
  */
-
-
 Denque.prototype.peekBack = function peekBack() {
   return this.peekAt(-1);
 };
+
 /**
  * Returns the current length of the queue
  * @return {Number}
  */
-
-
 Object.defineProperty(Denque.prototype, 'length', {
   get: function length() {
     return this.size();
   }
 });
+
 /**
  * Return the number of items on the list, or 0 if empty.
  * @returns {number}
  */
-
 Denque.prototype.size = function size() {
   if (this._head === this._tail) return 0;
   if (this._head < this._tail) return this._tail - this._head;else return this._capacityMask + 1 - (this._head - this._tail);
 };
+
 /**
  * Add an item at the beginning of the list.
  * @param item
  */
-
-
 Denque.prototype.unshift = function unshift(item) {
-  if (item === undefined) return this.size();
+  if (arguments.length === 0) return this.size();
   var len = this._list.length;
   this._head = this._head - 1 + len & this._capacityMask;
   this._list[this._head] = item;
   if (this._tail === this._head) this._growArray();
+  if (this._capacity && this.size() > this._capacity) this.pop();
   if (this._head < this._tail) return this._tail - this._head;else return this._capacityMask + 1 - (this._head - this._tail);
 };
+
 /**
  * Remove and return the first item on the list,
  * Returns undefined if the list is empty.
  * @returns {*}
  */
-
-
 Denque.prototype.shift = function shift() {
   var head = this._head;
   if (head === this._tail) return undefined;
@@ -250,31 +244,30 @@ Denque.prototype.shift = function shift() {
   if (head < 2 && this._tail > 10000 && this._tail <= this._list.length >>> 2) this._shrinkArray();
   return item;
 };
+
 /**
  * Add an item to the bottom of the list.
  * @param item
  */
-
-
 Denque.prototype.push = function push(item) {
-  if (item === undefined) return this.size();
+  if (arguments.length === 0) return this.size();
   var tail = this._tail;
   this._list[tail] = item;
   this._tail = tail + 1 & this._capacityMask;
-
   if (this._tail === this._head) {
     this._growArray();
   }
-
+  if (this._capacity && this.size() > this._capacity) {
+    this.shift();
+  }
   if (this._head < this._tail) return this._tail - this._head;else return this._capacityMask + 1 - (this._head - this._tail);
 };
+
 /**
  * Remove and return the last item on the list.
  * Returns undefined if the list is empty.
  * @returns {*}
  */
-
-
 Denque.prototype.pop = function pop() {
   var tail = this._tail;
   if (tail === this._head) return undefined;
@@ -285,21 +278,19 @@ Denque.prototype.pop = function pop() {
   if (this._head < 2 && tail > 10000 && tail <= len >>> 2) this._shrinkArray();
   return item;
 };
+
 /**
  * Remove and return the item at the specified index from the list.
  * Returns undefined if the list is empty.
  * @param index
  * @returns {*}
  */
-
-
 Denque.prototype.removeOne = function removeOne(index) {
-  var i = index; // expect a number or return undefined
-
+  var i = index;
+  // expect a number or return undefined
   if (i !== (i | 0)) {
     return void 0;
   }
-
   if (this._head === this._tail) return void 0;
   var size = this.size();
   var len = this._list.length;
@@ -308,25 +299,22 @@ Denque.prototype.removeOne = function removeOne(index) {
   i = this._head + i & this._capacityMask;
   var item = this._list[i];
   var k;
-
   if (index < size / 2) {
     for (k = index; k > 0; k--) {
       this._list[i] = this._list[i = i - 1 + len & this._capacityMask];
     }
-
     this._list[i] = void 0;
     this._head = this._head + 1 + len & this._capacityMask;
   } else {
     for (k = size - 1 - index; k > 0; k--) {
       this._list[i] = this._list[i = i + 1 + len & this._capacityMask];
     }
-
     this._list[i] = void 0;
     this._tail = this._tail - 1 + len & this._capacityMask;
   }
-
   return item;
 };
+
 /**
  * Remove number of items from the specified index from the list.
  * Returns array of removed items.
@@ -335,99 +323,77 @@ Denque.prototype.removeOne = function removeOne(index) {
  * @param count
  * @returns {array}
  */
-
-
 Denque.prototype.remove = function remove(index, count) {
   var i = index;
   var removed;
-  var del_count = count; // expect a number or return undefined
-
+  var del_count = count;
+  // expect a number or return undefined
   if (i !== (i | 0)) {
     return void 0;
   }
-
   if (this._head === this._tail) return void 0;
   var size = this.size();
   var len = this._list.length;
   if (i >= size || i < -size || count < 1) return void 0;
   if (i < 0) i += size;
-
   if (count === 1 || !count) {
     removed = new Array(1);
     removed[0] = this.removeOne(i);
     return removed;
   }
-
   if (i === 0 && i + count >= size) {
     removed = this.toArray();
     this.clear();
     return removed;
   }
-
   if (i + count > size) count = size - i;
   var k;
   removed = new Array(count);
-
   for (k = 0; k < count; k++) {
     removed[k] = this._list[this._head + i + k & this._capacityMask];
   }
-
   i = this._head + i & this._capacityMask;
-
   if (index + count === size) {
     this._tail = this._tail - count + len & this._capacityMask;
-
     for (k = count; k > 0; k--) {
       this._list[i = i + 1 + len & this._capacityMask] = void 0;
     }
-
     return removed;
   }
-
   if (index === 0) {
     this._head = this._head + count + len & this._capacityMask;
-
     for (k = count - 1; k > 0; k--) {
       this._list[i = i + 1 + len & this._capacityMask] = void 0;
     }
-
     return removed;
   }
-
   if (i < size / 2) {
     this._head = this._head + index + count + len & this._capacityMask;
-
     for (k = index; k > 0; k--) {
       this.unshift(this._list[i = i - 1 + len & this._capacityMask]);
     }
-
     i = this._head - 1 + len & this._capacityMask;
-
     while (del_count > 0) {
       this._list[i = i - 1 + len & this._capacityMask] = void 0;
       del_count--;
     }
-
     if (index < 0) this._tail = i;
   } else {
     this._tail = i;
     i = i + count + len & this._capacityMask;
-
     for (k = size - (count + index); k > 0; k--) {
       this.push(this._list[i++]);
     }
-
     i = this._tail;
-
     while (del_count > 0) {
       this._list[i = i + 1 + len & this._capacityMask] = void 0;
       del_count--;
     }
   }
-
   if (this._head < 2 && this._tail > 10000 && this._tail <= len >>> 2) this._shrinkArray();
   return removed;
 };
+
 /**
  * Native splice implementation.
  * Remove number of items from the specified index from the list and/or add new elements.
@@ -439,19 +405,15 @@ Denque.prototype.remove = function remove(index, count) {
  * @param {...*} [elements]
  * @returns {array}
  */
-
-
 Denque.prototype.splice = function splice(index, count) {
-  var i = index; // expect a number or return undefined
-
+  var i = index;
+  // expect a number or return undefined
   if (i !== (i | 0)) {
     return void 0;
   }
-
   var size = this.size();
   if (i < 0) i += size;
   if (i > size) return void 0;
-
   if (arguments.length > 2) {
     var k;
     var temp;
@@ -459,17 +421,13 @@ Denque.prototype.splice = function splice(index, count) {
     var arg_len = arguments.length;
     var len = this._list.length;
     var arguments_index = 2;
-
     if (!size || i < size / 2) {
       temp = new Array(i);
-
       for (k = 0; k < i; k++) {
         temp[k] = this._list[this._head + k & this._capacityMask];
       }
-
       if (count === 0) {
         removed = [];
-
         if (i > 0) {
           this._head = this._head + i + len & this._capacityMask;
         }
@@ -477,25 +435,20 @@ Denque.prototype.splice = function splice(index, count) {
         removed = this.remove(i, count);
         this._head = this._head + i + len & this._capacityMask;
       }
-
       while (arg_len > arguments_index) {
         this.unshift(arguments[--arg_len]);
       }
-
       for (k = i; k > 0; k--) {
         this.unshift(temp[k - 1]);
       }
     } else {
       temp = new Array(size - (i + count));
       var leng = temp.length;
-
       for (k = 0; k < leng; k++) {
         temp[k] = this._list[this._head + i + count + k & this._capacityMask];
       }
-
       if (count === 0) {
         removed = [];
-
         if (i != size) {
           this._tail = this._head + i + len & this._capacityMask;
         }
@@ -503,48 +456,44 @@ Denque.prototype.splice = function splice(index, count) {
         removed = this.remove(i, count);
         this._tail = this._tail - leng + len & this._capacityMask;
       }
-
       while (arguments_index < arg_len) {
         this.push(arguments[arguments_index++]);
       }
-
       for (k = 0; k < leng; k++) {
         this.push(temp[k]);
       }
     }
-
     return removed;
   } else {
     return this.remove(i, count);
   }
 };
+
 /**
  * Soft clear - does not reset capacity.
  */
-
-
 Denque.prototype.clear = function clear() {
+  this._list = new Array(this._list.length);
   this._head = 0;
   this._tail = 0;
 };
+
 /**
  * Returns true or false whether the list is empty.
  * @returns {boolean}
  */
-
-
 Denque.prototype.isEmpty = function isEmpty() {
   return this._head === this._tail;
 };
+
 /**
  * Returns an array of all queue items.
  * @returns {Array}
  */
-
-
 Denque.prototype.toArray = function toArray() {
   return this._copyArray(false);
 };
+
 /**
  * -------------
  *   INTERNALS
@@ -557,64 +506,83 @@ Denque.prototype.toArray = function toArray() {
  * @param array
  * @private
  */
-
-
 Denque.prototype._fromArray = function _fromArray(array) {
-  for (var i = 0; i < array.length; i++) this.push(array[i]);
+  var length = array.length;
+  var capacity = this._nextPowerOf2(length);
+  this._list = new Array(capacity);
+  this._capacityMask = capacity - 1;
+  this._tail = length;
+  for (var i = 0; i < length; i++) this._list[i] = array[i];
 };
+
 /**
  *
  * @param fullCopy
+ * @param size Initialize the array with a specific size. Will default to the current list size
  * @returns {Array}
  * @private
  */
+Denque.prototype._copyArray = function _copyArray(fullCopy, size) {
+  var src = this._list;
+  var capacity = src.length;
+  var length = this.length;
+  size = size | length;
 
-
-Denque.prototype._copyArray = function _copyArray(fullCopy) {
-  var newArray = [];
-  var list = this._list;
-  var len = list.length;
-  var i;
-
-  if (fullCopy || this._head > this._tail) {
-    for (i = this._head; i < len; i++) newArray.push(list[i]);
-
-    for (i = 0; i < this._tail; i++) newArray.push(list[i]);
-  } else {
-    for (i = this._head; i < this._tail; i++) newArray.push(list[i]);
+  // No prealloc requested and the buffer is contiguous
+  if (size == length && this._head < this._tail) {
+    // Simply do a fast slice copy
+    return this._list.slice(this._head, this._tail);
   }
-
-  return newArray;
+  var dest = new Array(size);
+  var k = 0;
+  var i;
+  if (fullCopy || this._head > this._tail) {
+    for (i = this._head; i < capacity; i++) dest[k++] = src[i];
+    for (i = 0; i < this._tail; i++) dest[k++] = src[i];
+  } else {
+    for (i = this._head; i < this._tail; i++) dest[k++] = src[i];
+  }
+  return dest;
 };
+
 /**
  * Grows the internal list array.
  * @private
  */
-
-
 Denque.prototype._growArray = function _growArray() {
-  if (this._head) {
-    // copy existing data, head to end, then beginning to tail.
-    this._list = this._copyArray(true);
+  if (this._head != 0) {
+    // double array size and copy existing data, head to end, then beginning to tail.
+    var newList = this._copyArray(true, this._list.length << 1);
+    this._tail = this._list.length;
     this._head = 0;
-  } // head is at 0 and array is now full, safe to extend
-
-
-  this._tail = this._list.length;
-  this._list.length *= 2;
+    this._list = newList;
+  } else {
+    this._tail = this._list.length;
+    this._list.length <<= 1;
+  }
   this._capacityMask = this._capacityMask << 1 | 1;
 };
+
 /**
  * Shrinks the internal list array.
  * @private
  */
-
-
 Denque.prototype._shrinkArray = function _shrinkArray() {
   this._list.length >>>= 1;
   this._capacityMask >>>= 1;
 };
 
+/**
+ * Find the next power of 2, at least 4
+ * @private
+ * @param {number} num
+ * @returns {number}
+ */
+Denque.prototype._nextPowerOf2 = function _nextPowerOf2(num) {
+  var log2 = Math.log(num) / Math.log(2);
+  var nextPow2 = 1 << log2 + 1;
+  return Math.max(nextPow2, 4);
+};
 module.exports = Denque;
 },{}],"bajV":[function(require,module,exports) {
 "use strict";
@@ -624,16 +592,13 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.sleep = exports.Completer = exports.StreamSubscription = exports.Stream = void 0;
 /** @ignore */
-
 class Stream {
   constructor(onStartListen, onAllCancel, onListen, cached = false) {
     /** @ignore */
     this._listeners = new Set();
     /** @ignore */
-
     this._updating = false;
     /** @ignore */
-
     this._cached = false;
     this.isClosed = false;
     this._onStartListen = onStartListen;
@@ -641,18 +606,14 @@ class Stream {
     this._onListen = onListen;
     this._cached = cached;
   }
-
   listen(listener, useCache = true) {
     this._listeners.add(listener);
-
     if (this._onStartListen && this._listeners.size === 1) {
       this._onStartListen();
     }
-
     if (this._onListen) {
       this._onListen(listener);
     }
-
     if (useCache && this._value !== undefined && !this._updating) {
       // skip extra update if it's already in updating iteration
       setTimeout(() => {
@@ -661,71 +622,51 @@ class Stream {
         }
       }, 0);
     }
-
     return new StreamSubscription(this, listener);
   }
-
   unlisten(listener) {
     this._listeners.delete(listener);
-
     if (this._onAllCancel && this._listeners.size === 0) {
       this._onAllCancel();
     }
   }
-
   add(val) {
     if (this.isClosed) {
       return false;
     }
-
     this._value = val;
-
     this._dispatch();
-
     return true;
   }
   /** @ignore */
-
-
   _dispatch() {
     this._updating = true;
-
     for (let listener of this._listeners) {
       listener(this._value);
     }
-
     this._updating = false;
-
     if (!this._cached) {
       this._value = undefined;
     }
   }
-
   hasListener() {
     return this._listeners.size !== 0;
   }
-
   close() {
     if (!this.isClosed) {
       this._value = undefined;
       this.isClosed = true;
-
       this._listeners.clear();
-
       if (this._onClose) {
         this._onClose();
       }
     }
   }
-
   reset() {
     this._value = undefined;
   }
-
 }
-
 exports.Stream = Stream;
-
 class StreamSubscription {
   /** @ignore */
   constructor(stream, listener) {
@@ -735,22 +676,16 @@ class StreamSubscription {
   /**
    * Close the subscription.
    */
-
-
   close() {
     if (this._stream && this._listener) {
       this._stream.unlisten(this._listener);
-
       this._stream = null;
       this._listener = null;
     }
   }
-
 }
-
 exports.StreamSubscription = StreamSubscription;
 /** @ignore */
-
 class Completer {
   constructor() {
     this.isCompleted = false;
@@ -759,32 +694,25 @@ class Completer {
       this._reject = reject;
     });
   }
-
   complete(val) {
     if (this._resolve) {
       this._resolve(val);
     }
-
     this.isCompleted = true;
   }
-
   completeError(val) {
     if (this._reject) {
       this._reject(val);
     }
   }
-
 }
-
 exports.Completer = Completer;
 /** @ignore */
-
 function sleep(ms = 0) {
   return new Promise((resolve, reject) => {
     setTimeout(resolve, ms);
   });
 }
-
 exports.sleep = sleep;
 },{}],"yh9p":[function(require,module,exports) {
 'use strict'
@@ -914,9 +842,7 @@ function fromByteArray (uint8) {
 
   // go through the array every three bytes, we'll deal with trailing stuff later
   for (var i = 0, len2 = len - extraBytes; i < len2; i += maxChunkLength) {
-    parts.push(encodeChunk(
-      uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)
-    ))
+    parts.push(encodeChunk(uint8, i, (i + maxChunkLength) > len2 ? len2 : (i + maxChunkLength)))
   }
 
   // pad the end with zeros, but make sure to not forget the extra bytes
@@ -5413,38 +5339,29 @@ var __importDefault = this && this.__importDefault || function (mod) {
     "default": mod
   };
 };
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-
 const base64_js_1 = __importDefault(require("base64-js"));
-
 class Base64 {
   static encodeString(content) {
     return Base64.encode(new Buffer(content));
   }
-
   static decodeString(input) {
     return Buffer.from(Base64.decode(input)).toString();
   }
-
   static encode(bytes) {
     // url safe encode
     return base64_js_1.default.fromByteArray(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
-
   static decode(input) {
     if (input.length % 4 !== 0) {
       // add padding to url safe string;
       input = input.padEnd((input.length >> 2) + 1 << 2, '=');
     }
-
     return base64_js_1.default.toByteArray(input);
   }
-
 }
-
 exports.default = Base64;
 },{"base64-js":"yh9p","buffer":"dskh"}],"TRmg":[function(require,module,exports) {
 var Buffer = require("buffer").Buffer;
@@ -5455,16 +5372,12 @@ var __importDefault = this && this.__importDefault || function (mod) {
     "default": mod
   };
 };
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.DsMsgPackCodecImpl = exports.DsJsonCodecImpl = exports.DsJson = exports.DsCodec = exports.toBuffer = void 0;
-
 const msgpack_lite_1 = __importDefault(require("msgpack-lite"));
-
 const base64_1 = __importDefault(require("./base64"));
-
 function toBuffer(val) {
   if (val instanceof Buffer) {
     return val;
@@ -5472,76 +5385,57 @@ function toBuffer(val) {
     return Buffer.from(val);
   }
 }
-
 exports.toBuffer = toBuffer;
-
 class DsCodec {
   static register(name, codec) {
     if (name != null && codec != null) {
       DsCodec._codecs[name] = codec;
     }
   }
-
   static getCodec(name) {
     let rslt = DsCodec._codecs[name];
-
     if (rslt == null) {
       return DsCodec.defaultCodec;
     }
-
     return rslt;
   }
-
   get blankData() {
     if (this._blankData == null) {
       this._blankData = this.encodeFrame({});
     }
-
     return this._blankData;
   }
-
 }
-
 exports.DsCodec = DsCodec;
-
 class DsJson {
   static encode(val, pretty = false) {
     return this.instance.encodeJson(val, pretty);
   }
-
   static decode(str) {
     return this.instance.decodeJson(str);
   }
-
 }
-
 exports.DsJson = DsJson;
-
 class DsJsonCodecImpl extends DsCodec {
   static _safeEncoder(key, value) {
     if (typeof value === 'object') {
       if (Object.isExtensible(value)) {
         return value;
       }
-
       return null;
     } else {
       return value;
     }
   }
-
   decodeJson(str) {
     return JSON.parse(str);
   }
-
   encodeJson(val, pretty = false) {
     return JSON.stringify(val, DsJsonCodecImpl._safeEncoder, pretty ? 1 : undefined);
   }
-
   decodeBinaryFrame(bytes) {
     return this.decodeStringFrame(toBuffer(bytes).toString());
   }
-
   static reviver(key, value) {
     if (typeof value === 'string' && value.startsWith('\u001B')) {
       if (value.startsWith('\u001Bbytes:')) {
@@ -5554,19 +5448,15 @@ class DsJsonCodecImpl extends DsCodec {
         switch (value) {
           case '\u001BNaN':
             return NaN;
-
           case '\u001BInfinity':
             return Infinity;
-
           case '\u001B-Infinity':
             return -Infinity;
         }
       }
     }
-
     return value;
   }
-
   static replacer(key, value) {
     if (typeof value === 'number') {
       if (!Number.isFinite(value)) {
@@ -5581,45 +5471,33 @@ class DsJsonCodecImpl extends DsCodec {
     } else if (value instanceof Uint8Array) {
       return `\u001Bbytes:${base64_1.default.encode(value)}`;
     }
-
     return value;
   }
-
   decodeStringFrame(str) {
     return JSON.parse(str, DsJsonCodecImpl.reviver);
   }
-
   encodeFrame(val) {
     return JSON.stringify(val, DsJsonCodecImpl.replacer);
   }
-
 }
-
 exports.DsJsonCodecImpl = DsJsonCodecImpl;
 DsJson.instance = new DsJsonCodecImpl();
-
 class DsMsgPackCodecImpl extends DsCodec {
   decodeBinaryFrame(bytes) {
     let result = msgpack_lite_1.default.decode(bytes);
-
     if (typeof result === 'object') {
       return result;
     }
-
     return {};
   }
-
   decodeStringFrame(input) {
     // not supported
     return {};
   }
-
   encodeFrame(val) {
     return msgpack_lite_1.default.encode(val);
   }
-
 }
-
 exports.DsMsgPackCodecImpl = DsMsgPackCodecImpl;
 DsMsgPackCodecImpl.instance = new DsMsgPackCodecImpl();
 DsCodec._codecs = {
@@ -5639,16 +5517,12 @@ const DEBUG = 2;
 const INFO = 4;
 const WARN = 8;
 const ERROR = 16;
-
 function getTs() {
   let d = new Date();
   let offsetISOStr = d.toISOString(); // new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString();
-
   return `${offsetISOStr.substring(0, 10)} ${offsetISOStr.substring(11)}`;
 }
-
 exports.getTs = getTs;
-
 function getLevelLabel(level) {
   if (level >= ERROR) {
     return 'ERROR';
@@ -5664,31 +5538,24 @@ function getLevelLabel(level) {
     return '';
   }
 }
-
 function parserLogLevel(str) {
   switch (str.toUpperCase()) {
     case 'ERROR':
       return ERROR;
-
     case 'WARN':
       return WARN;
-
     case 'DEBUG':
       return DEBUG;
-
     case 'TRACE':
       return TRACE;
     // case 'INFO':
-
     default:
       return INFO;
   }
 }
-
 class Logger {
   constructor() {
     this._level = INFO | WARN | ERROR;
-
     this.formatter = (msg, level, tag) => {
       if (tag) {
         return `${getTs()} [${tag}] ${getLevelLabel(level)} ${msg}`;
@@ -5696,7 +5563,6 @@ class Logger {
         return `${getTs()} ${getLevelLabel(level)} ${msg}`;
       }
     };
-
     this.printer = (str, level) => {
       if (level >= ERROR) {
         console.error(str);
@@ -5709,24 +5575,19 @@ class Logger {
       }
     };
   }
-
   setLevel(level, coverHigherLevel = true) {
     if (typeof level === 'string') {
       level = parserLogLevel(level);
     }
-
     let mergedLevel = level;
-
     if (coverHigherLevel) {
       while (level < ERROR) {
         level <<= 1;
         mergedLevel |= level;
       }
     }
-
     this._level = mergedLevel;
   }
-
   _log(level, msg, tag) {
     if (level & this._level) {
       if (this.formatter) {
@@ -5735,68 +5596,52 @@ class Logger {
       }
     }
   }
-
   trace(msg, tag) {
     this._log(TRACE, msg, tag);
   }
-
   debug(msg, tag) {
     this._log(DEBUG, msg, tag);
   }
-
   info(msg, tag) {
     this._log(INFO, msg, tag);
   }
-
   warn(msg, tag) {
     this._log(WARN, msg, tag);
   }
-
   error(msg, tag) {
     this._log(ERROR, msg, tag);
   }
-
   tag(tag) {
     return new TaggedLogger(this, tag);
   }
-
 }
-
 exports.Logger = Logger;
 Logger.TRACE = TRACE;
 Logger.DEBUG = DEBUG;
 Logger.INFO = INFO;
 Logger.WARN = WARN;
 Logger.ERROR = ERROR;
-
 class TaggedLogger {
   constructor(logger, tag) {
     this.logger = logger;
     this.tag = tag;
   }
-
   trace(msg) {
     this.logger.trace(msg, this.tag);
   }
-
   debug(msg) {
     this.logger.debug(msg, this.tag);
   }
-
   info(msg) {
     this.logger.info(msg, this.tag);
   }
-
   warn(msg) {
     this.logger.warn(msg, this.tag);
   }
-
   error(msg) {
     this.logger.error(msg, this.tag);
   }
-
 }
-
 exports.TaggedLogger = TaggedLogger;
 exports.logger = new Logger();
 },{}],"N9NG":[function(require,module,exports) {
@@ -5807,59 +5652,42 @@ var __importDefault = this && this.__importDefault || function (mod) {
     "default": mod
   };
 };
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.DsError = exports.ErrorPhase = exports.ClientLink = exports.ServerLink = exports.BaseLink = exports.ConnectionAckGroup = exports.ProcessorResult = exports.Connection = exports.DummyECDH = exports.ECDH = void 0;
-
 const denque_1 = __importDefault(require("denque"));
-
 const async_1 = require("../utils/async");
-
 const codec_1 = require("../utils/codec");
-
 const logger_1 = require("../utils/logger");
-
 class ECDH {
   verifySalt(salt, hash) {
     return this.hashSalt(salt) === hash;
   }
-
 }
-
 exports.ECDH = ECDH;
 /** @ignore */
-
 class DummyECDH {
   constructor() {
     this.encodedPublicKey = '';
   }
-
   hashSalt(salt) {
     return '';
   }
-
   verifySalt(salt, hash) {
     return true;
   }
-
 }
-
 exports.DummyECDH = DummyECDH;
-
 class Connection {
   constructor() {
     this.codec = codec_1.DsCodec.defaultCodec;
     this.pendingAcks = new denque_1.default();
   }
-
   ack(ackId) {
     let findAckGroup;
-
     for (let i = 0; i < this.pendingAcks.length; ++i) {
       let ackGroup = this.pendingAcks.peekAt(i);
-
       if (ackGroup.ackId === ackId) {
         findAckGroup = ackGroup;
         break;
@@ -5867,77 +5695,61 @@ class Connection {
         findAckGroup = ackGroup;
       }
     }
-
     if (findAckGroup != null) {
       let ts = new Date().getTime();
-
       do {
         let ackGroup = this.pendingAcks.shift();
         ackGroup.ackAll(ackId, ts);
-
         if (ackGroup === findAckGroup) {
           break;
         }
       } while (findAckGroup != null);
     }
   }
-
 }
-
-exports.Connection = Connection; /// generate message right before sending to get the latest update
+exports.Connection = Connection;
+/// generate message right before sending to get the latest update
 /// return messages and the processors that need ack callback
-
 class ProcessorResult {
   constructor(messages, processors) {
     this.messages = messages;
     this.processors = processors;
   }
-
 }
-
 exports.ProcessorResult = ProcessorResult;
-
 class ConnectionAckGroup {
   constructor(ackId, startTime, processors) {
     this.ackId = ackId;
     this.startTime = startTime;
     this.processors = processors;
   }
-
   ackAll(ackid, time) {
     for (let processor of this.processors) {
       processor.ackReceived(this.ackId, this.startTime, time);
     }
   }
-
 }
-
-exports.ConnectionAckGroup = ConnectionAckGroup; /// Base Class for Links
-
+exports.ConnectionAckGroup = ConnectionAckGroup;
+/// Base Class for Links
 class BaseLink {}
-
-exports.BaseLink = BaseLink; /// Base Class for Server Link implementations.
-
+exports.BaseLink = BaseLink;
+/// Base Class for Server Link implementations.
 class ServerLink extends BaseLink {}
-
 exports.ServerLink = ServerLink;
-let linkLogger = logger_1.logger.tag('link'); /// Base Class for Client Link implementations.
-
+let linkLogger = logger_1.logger.tag('link');
+/// Base Class for Client Link implementations.
 class ClientLink extends BaseLink {
   constructor() {
     super(...arguments);
     this.onConnect = new async_1.Stream(null, null, null, true);
     /** @ignore */
-
     this._onConnect = () => {
       this.onConnect.add(true);
       this.onDisconnect.reset();
       linkLogger.info('Connected');
     };
-
     this.onDisconnect = new async_1.Stream(null, null, null, true);
     /** @ignore */
-
     this._onDisconnect = () => {
       if (this.onConnect._value) {
         this.onDisconnect.add(true);
@@ -5945,29 +5757,21 @@ class ClientLink extends BaseLink {
         this.onConnect.reset();
       }
     };
-
     this.onReconnect = new async_1.Stream();
   }
   /** @ignore */
-
-
   get logName() {
     return null;
   }
   /** @ignore */
-
-
   formatLogMessage(msg) {
     if (this.logName != null) {
       return `[${this.logName}] ${msg}`;
     }
-
     return msg;
   }
-
   async connect() {
     this._connect();
-
     return new Promise(resolve => {
       let listener = this.onConnect.listen(connected => {
         resolve(connected);
@@ -5975,98 +5779,74 @@ class ClientLink extends BaseLink {
       });
     });
   }
-
 }
-
 exports.ClientLink = ClientLink;
-
 class ErrorPhase {}
-
 exports.ErrorPhase = ErrorPhase;
 ErrorPhase.request = 'request';
 ErrorPhase.response = 'response';
-
 class DsError {
   constructor(type, options = {}) {
     this.type = type;
     this.msg = options.msg;
     this.detail = options.detail;
     this.path = options.path;
-
     if (options.phase) {
       this.phase = options.phase;
     } else {
       this.phase = ErrorPhase.response;
     }
   }
-
   static fromMap(m) {
     let error = new DsError('');
-
     if (typeof m['type'] === 'string') {
       error.type = m['type'];
     }
-
     if (typeof m['msg'] === 'string') {
       error.msg = m['msg'];
     }
-
     if (typeof m['path'] === 'string') {
       error.path = m['path'];
     }
-
     if (typeof m['phase'] === 'string') {
       error.phase = m['phase'];
     }
-
     if (typeof m['detail'] === 'string') {
       error.detail = m['detail'];
     }
-
     return error;
   }
-
   getMessage() {
     if (this.msg) {
       return this.msg;
     }
-
     if (this.type) {
-      // TODO, return normal case instead of camel case
-      return this.type;
+      // Convert camelCase to Title Case
+      const result = this.type.replace(/([A-Z])/g, " $1");
+      return result.charAt(0).toUpperCase() + result.slice(1);
     }
-
     return 'Error';
   }
-
   serialize() {
     let rslt = {};
-
     if (this.msg != null) {
       rslt['msg'] = this.msg;
     }
-
     if (this.type != null) {
       rslt['type'] = this.type;
     }
-
     if (this.path != null) {
       rslt['path'] = this.path;
     }
-
     if (this.phase === ErrorPhase.request) {
       rslt['phase'] = ErrorPhase.request;
     }
-
     if (this.detail != null) {
       rslt['detail'] = this.detail;
     }
-
     return rslt;
   }
-
 }
-
 exports.DsError = DsError;
 DsError.PERMISSION_DENIED = new DsError('permissionDenied');
 DsError.INVALID_METHOD = new DsError('invalidMethod');
@@ -6086,9 +5866,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Request = void 0;
-
 const interfaces_1 = require("../common/interfaces");
-
 class Request {
   constructor(requester, rid, updater, data) {
     this._isClosed = false;
@@ -6098,69 +5876,54 @@ class Request {
     this.updater = updater;
     this.data = data;
   }
-
   get isClosed() {
     return this._isClosed;
-  } /// resend the data if previous sending failed
-
-
+  }
+  /// resend the data if previous sending failed
   resend() {
     this.streamStatus = 'initialize';
     this.requester.addToSendList(this.data);
   }
-
   _update(m) {
     if (typeof m['stream'] === 'string') {
       this.streamStatus = m['stream'];
     }
-
     let updates;
     let columns;
     let meta;
-
     if (Array.isArray(m['updates'])) {
       updates = m['updates'];
     }
-
     if (Array.isArray(m['columns'])) {
       columns = m['columns'];
     }
-
     if (m['meta'] instanceof Object) {
       meta = m['meta'];
-    } // remove the request from global object
-
-
+    }
+    // remove the request from global object
     if (this.streamStatus === 'closed') {
       this.requester._requests.delete(this.rid);
     }
-
     let error;
-
     if (m.hasOwnProperty('error') && m['error'] instanceof Object) {
       error = interfaces_1.DsError.fromMap(m['error']);
       this.requester.onError.add(error);
     }
-
     this.updater.onUpdate(this.streamStatus, updates, columns, meta, error);
-  } /// close the request and finish data
-
-
+  }
+  /// close the request and finish data
   _close(error) {
     if (this.streamStatus != 'closed') {
       this.streamStatus = 'closed';
       this.updater.onUpdate('closed', null, null, null, error);
     }
-  } /// close the request from the client side
-
-
+  }
+  /// close the request from the client side
   close() {
     // _close will also be called later from the requester;
     this.requester.closeRequest(this);
   }
-
 }
-
 exports.Request = Request;
 },{"../common/interfaces":"N9NG"}],"T61P":[function(require,module,exports) {
 "use strict";
@@ -6169,49 +5932,35 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.ConnectionHandler = exports.DSA_CONFIG = void 0;
-
 const interfaces_1 = require("./interfaces");
-
 exports.DSA_CONFIG = {
   ackWaitCount: 16,
   defaultCacheSize: 256
 };
-
 class ConnectionHandler {
   constructor() {
     /** @ignore */
     this._toSendList = [];
     /** @ignore */
-
     this._processors = [];
     /** @ignore */
-
     this._pendingSend = false;
   }
   /** @ignore */
-
-
   get connection() {
     return this._conn;
   }
   /** @ignore */
-
-
   set connection(conn) {
     if (this._connListener != null) {
       this._connListener.close();
-
       this._connListener = null;
-
       this._onDisconnected(this._conn);
     }
-
     this._conn = conn;
     this._connListener = this._conn.onReceive.listen(this.onData);
-
-    this._conn.onDisconnected.then(conn => this._onDisconnected(conn)); // resend all requests after a connection
-
-
+    this._conn.onDisconnected.then(conn => this._onDisconnected(conn));
+    // resend all requests after a connection
     if (this._conn.connected) {
       this.onReconnected();
     } else {
@@ -6219,94 +5968,70 @@ class ConnectionHandler {
     }
   }
   /** @ignore */
-
-
   _onDisconnected(conn) {
     if (this._conn === conn) {
       if (this._connListener != null) {
         this._connListener.close();
-
         this._connListener = null;
       }
-
       this.onDisconnected();
       this._conn = null;
     }
   }
   /** @ignore */
-
-
   onReconnected() {
     if (this._pendingSend) {
       this._conn.sendWhenReady(this);
     }
   }
   /** @ignore */
-
-
   addToSendList(m) {
     this._toSendList.push(m);
-
     if (!this._pendingSend) {
       if (this._conn != null) {
         this._conn.sendWhenReady(this);
       }
-
       this._pendingSend = true;
     }
-  } /// a processor function that's called just before the data is sent
+  }
+  /// a processor function that's called just before the data is sent
   /// same processor won't be added to the list twice
   /// inside processor, send() data that only need to appear once per data frame
-
   /** @ignore */
-
-
   addProcessor(processor) {
     this._processors.push(processor);
-
     if (!this._pendingSend) {
       if (this._conn != null) {
         this._conn.sendWhenReady(this);
       }
-
       this._pendingSend = true;
     }
-  } /// gather all the changes from
-
+  }
+  /// gather all the changes from
   /** @ignore */
-
-
   getSendingData(currentTime, waitingAckId) {
     this._pendingSend = false;
     let processors = this._processors;
-
     if (processors.length > 32) {
       processors = this._processors.slice(0, 32);
       this._processors = this._processors.slice(32);
-
       this._conn.sendWhenReady(this);
     } else {
       this._processors = [];
     }
-
     for (let proc of processors) {
       proc.startSendingData(currentTime, waitingAckId);
     }
-
     let rslt = this._toSendList;
     this._toSendList = [];
     return new interfaces_1.ProcessorResult(rslt, processors);
   }
   /** @ignore */
-
-
   clearProcessors() {
     this._processors.length = 0;
     this._pendingSend = false;
   }
-
 }
-
 exports.ConnectionHandler = ConnectionHandler;
 },{"./interfaces":"N9NG"}],"QClj":[function(require,module,exports) {
 "use strict";
@@ -6314,111 +6039,89 @@ exports.ConnectionHandler = ConnectionHandler;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.Path = exports.Node = void 0; /// Base Class for any and all nodes in the SDK.
+exports.Path = exports.Node = void 0;
+/// Base Class for any and all nodes in the SDK.
 /// If you are writing a link, please look at the [dslink.responder.SimpleNode] class.
-
 class Node {
   constructor(profileName = 'node') {
     /// Node Attributes
-    this.attributes = new Map(); /// Node Configs
-
-    this.configs = new Map(); /// Node Children
+    this.attributes = new Map();
+    /// Node Configs
+    this.configs = new Map();
+    /// Node Children
     /// object of Child Name to Child Node
-
     this.children = new Map();
-
     if (!profileName) {
       // get profile from static property
       profileName = this.constructor.profileName;
-
       if (typeof profileName !== 'string') {
         profileName = 'node';
       }
     }
-
     this.configs.set('$is', profileName);
   }
-
   static getDisplayName(nameOrPath) {
     if (nameOrPath.includes('/')) {
       let names = nameOrPath.split('/');
       nameOrPath = names.pop();
-
       while (nameOrPath === '' && names.length) {
         nameOrPath = names.pop();
       }
     }
-
     if (nameOrPath.includes('%')) {
       nameOrPath = decodeURIComponent(nameOrPath);
     }
-
     return nameOrPath;
-  } /// Get an Attribute
-
-
+  }
+  /// Get an Attribute
   getAttribute(name) {
     if (this.attributes.has(name)) {
       return this.attributes.get(name);
     }
-
     if (this.profile != null && this.profile.attributes.has(name)) {
       return this.profile.attributes.get(name);
     }
-
     return undefined;
-  } /// Get a Config
-
-
+  }
+  /// Get a Config
   getConfig(name) {
     if (this.configs.has(name)) {
       return this.configs.get(name);
     }
-
     if (this.profile != null && this.profile.configs.has(name)) {
       return this.profile.configs.get(name);
     }
-
     return undefined;
-  } /// Get a Child Node
-
-
+  }
+  /// Get a Child Node
   getChild(name) {
     if (this.children.has(name)) {
       return this.children.get(name);
     }
-
     if (this.profile != null && this.profile.children.has(name)) {
       return this.profile.children.get(name);
     }
-
     return undefined;
-  } /// Get a property of this node.
+  }
+  /// Get a property of this node.
   /// If [name] starts with '$', this will fetch a config.
   /// If [name] starts with a '@', this will fetch an attribute.
   /// Otherwise this will fetch a child.
-
-
   get(name) {
     if (name.startsWith('$')) {
       return this.getConfig(name);
     }
-
     if (name.startsWith('@')) {
       return this.getAttribute(name);
     }
-
     return this.getChild(name);
-  } /// Iterates over all the children of this node and passes them to the specified [callback].
-
+  }
+  /// Iterates over all the children of this node and passes them to the specified [callback].
   /** @ignore */
-
-
   forEachChild(callback) {
     for (let [name, node] of this.children) {
       callback(name, node);
     }
-
     if (this.profile != null) {
       for (let [name, node] of this.profile.children) {
         if (!this.children.has(name)) {
@@ -6428,13 +6131,10 @@ class Node {
     }
   }
   /** @ignore */
-
-
   forEachConfig(callback) {
     for (let [name, val] of this.configs) {
       callback(name, val);
     }
-
     if (this.profile != null) {
       for (let [name, val] of this.profile.configs) {
         if (!this.children.has(name)) {
@@ -6444,13 +6144,10 @@ class Node {
     }
   }
   /** @ignore */
-
-
   forEachAttribute(callback) {
     for (let [name, val] of this.attributes) {
       callback(name, val);
     }
-
     if (this.profile != null) {
       for (let [name, val] of this.profile.attributes) {
         if (!this.children.has(name)) {
@@ -6458,170 +6155,127 @@ class Node {
         }
       }
     }
-  } /// Gets a map for the data that will be listed in the parent node's children property.
-
+  }
+  /// Gets a map for the data that will be listed in the parent node's children property.
   /** @ignore */
-
-
   getSimpleMap() {
     let rslt = {};
-
     if (this.configs.has('$is')) {
       rslt['$is'] = this.configs.get('$is');
     }
-
     if (this.configs.has('$type')) {
       rslt['$type'] = this.configs.get('$type');
     }
-
     if (this.configs.has('$name')) {
       rslt['$name'] = this.configs.get('$name');
     }
-
     if (this.configs.has('$invokable')) {
       rslt['$invokable'] = this.configs.get('$invokable');
     }
-
     if (this.configs.has('$writable')) {
       rslt['$writable'] = this.configs.get('$writable');
     }
-
     if (this.configs.has('$params')) {
       rslt['$params'] = this.configs.get('$params');
     }
-
     if (this.configs.has('$columns')) {
       rslt['$columns'] = this.configs.get('$columns');
     }
-
     if (this.configs.has('$result')) {
       rslt['$result'] = this.configs.get('$result');
     }
-
     return rslt;
   }
-
   destroy() {}
-
 }
-
-exports.Node = Node; /// Utility class for node and config/attribute paths.
-
+exports.Node = Node;
+/// Utility class for node and config/attribute paths.
 class Path {
   constructor(path) {
     /// If this path is invalid, this will be false. Otherwise this will be true.
     this.valid = true;
     this.path = path;
-
     this._parse();
   }
   /** @ignore */
-
-
   static escapeName(str) {
     if (Path.invalidNameChar.test(str)) {
       return encodeURIComponent(str);
     }
-
     return str;
   }
-
   static getValidPath(path, basePath) {
     if (typeof path === 'string') {
       let p = new Path(path);
-
       if (p.valid) {
         p.mergeBasePath(basePath);
         return p;
       }
     }
-
     return null;
   }
-
   static getValidNodePath(path, basePath) {
     if (typeof path === 'string') {
       let p = new Path(path);
-
       if (p.valid && p.isNode) {
         p.mergeBasePath(basePath);
         return p;
       }
     }
-
     return null;
   }
-
   static getValidAttributePath(path, basePath) {
     if (typeof path === 'string') {
       let p = new Path(path);
-
       if (p.valid && p.isAttribute) {
         p.mergeBasePath(basePath);
         return p;
       }
     }
-
     return null;
   }
-
   static getValidConfigPath(path, basePath) {
     if (typeof path === 'string') {
       let p = new Path(path);
-
       if (p.valid && p.isConfig) {
         p.mergeBasePath(basePath);
         return p;
       }
     }
-
     return null;
   }
   /**
    * concat parent path with child name without validation
    */
-
-
   static concat(parentPath, name) {
     if (parentPath === '/') {
       return `/${name}`;
     }
-
     return `${parentPath}/${name}`;
   }
   /**  Get the parent of this path. */
-
-
   get parent() {
     return new Path(this.parentPath);
   }
   /** Get a child of this path. */
-
-
   child(name) {
     return new Path((this.path.endsWith('/') ? this.path.substring(0, this.path.length - 1) : this.path) + '/' + (name.startsWith('/') ? name.substring(1) : name));
   }
   /** @ignore */
-
-
   _parse() {
     if (this.path === '' || Path.invalidChar.test(this.path) || this.path.includes('//')) {
       this.valid = false;
     }
-
     if (this.path === '/') {
       this.valid = true;
       this.name = '/';
       this.parentPath = '';
       return;
     }
-
     if (this.path.endsWith('/')) {
       this.path = this.path.substring(0, this.path.length - 1);
     }
-
     let pos = this.path.lastIndexOf('/');
-
     if (pos < 0) {
       this.name = this.path;
       this.parentPath = '';
@@ -6631,61 +6285,50 @@ class Path {
     } else {
       this.parentPath = this.path.substring(0, pos);
       this.name = this.path.substring(pos + 1);
-
       if (this.parentPath.includes('/$') || this.parentPath.includes('/@')) {
         // parent path can't be attribute or config
         this.valid = false;
       }
     }
-  } /// Is this an absolute path?
-
-
+  }
+  /// Is this an absolute path?
   get isAbsolute() {
     return this.name === '/' || this.parentPath.startsWith('/');
-  } /// Is this the root path?
-
-
+  }
+  /// Is this the root path?
   get isRoot() {
     return this.name === '/';
-  } /// Is this a config?
-
-
+  }
+  /// Is this a config?
   get isConfig() {
     return this.name.startsWith('$');
-  } /// Is this an attribute?
-
-
+  }
+  /// Is this an attribute?
   get isAttribute() {
     return this.name.startsWith('@');
-  } /// Is this a node?
-
-
+  }
+  /// Is this a node?
   get isNode() {
     return !this.name.startsWith('@') && !this.name.startsWith('$');
-  } /// Merges the [base] path with this path.
-
+  }
+  /// Merges the [base] path with this path.
   /** @ignore */
-
-
   mergeBasePath(base, force = false) {
     if (base == null) {
       return;
     }
-
     if (!this.isAbsolute) {
       if (this.parentPath === '') {
         this.parentPath = base;
       } else {
         this.parentPath = `${base}/${this.parentPath}`;
       }
-
       this.path = `${this.parentPath}/${name}`;
     } else if (force) {
       // apply base path on a absolute path
       if (name === '') {
         // map the root path
         this.path = base;
-
         this._parse();
       } else {
         this.parentPath = `${base}/${this.parentPath}`;
@@ -6693,17 +6336,13 @@ class Path {
       }
     }
   }
-
 }
-
-exports.Path = Path; /// Regular Expression for invalid characters in paths.
-
+exports.Path = Path;
+/// Regular Expression for invalid characters in paths.
 /** @ignore */
-
-Path.invalidChar = /[\\\?\*|"<>:]/; /// Regular Expression for invalid characters in names.
-
+Path.invalidChar = /[\\\?\*|"<>:]/;
+/// Regular Expression for invalid characters in names.
 /** @ignore */
-
 Path.invalidNameChar = /[\/\\\?\*|"<>:]/;
 },{}],"wq45":[function(require,module,exports) {
 "use strict";
@@ -6712,15 +6351,12 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.RequesterUpdate = void 0;
-
 class RequesterUpdate {
   constructor(streamStatus, error) {
     this.streamStatus = streamStatus;
     this.error = error;
   }
-
 }
-
 exports.RequesterUpdate = RequesterUpdate;
 },{}],"Re02":[function(require,module,exports) {
 "use strict";
@@ -6729,84 +6365,66 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.ValueUpdate = exports.timeZone = void 0;
-
 let _lastTZStr;
-
 let _lastTZ;
-
 function timeZone(date) {
   let timeZoneOffset = date.getTimezoneOffset();
-
   if (timeZoneOffset !== _lastTZ) {
     let s = '+';
-
     if (timeZoneOffset < 0) {
       timeZoneOffset = -timeZoneOffset;
       s = '-';
     }
-
     let hhstr = `${timeZoneOffset / 60 | 0}`.padStart(2, '0');
     let mmstr = `${timeZoneOffset % 60}`.padStart(2, '0');
     _lastTZ = timeZoneOffset;
     _lastTZStr = `${s}${hhstr}:${mmstr}`;
   }
-
   return _lastTZStr;
 }
-
-exports.timeZone = timeZone; /// Represents an update to a value subscription.
-
+exports.timeZone = timeZone;
+/// Represents an update to a value subscription.
 class ValueUpdate {
   constructor(value, ts, options) {
     /// The id of the ack we are waiting for.
-    this.waitingAck = -1; /// How many updates have happened since the last response.
-
+    this.waitingAck = -1;
+    /// How many updates have happened since the last response.
     this.count = 1;
     this._cloned = false;
     this.value = value;
-
     if (ts) {
       this.ts = ts;
     } else {
       this.ts = ValueUpdate.getTs();
     }
-
     if (options) {
       if (options.status) {
         this.status = options.status;
       }
-
       if (options.count) {
         this.count = options.count;
       }
     }
-
     this.created = new Date();
-  } /// Generates a timestamp in the proper DSA format.
-
-
+  }
+  /// Generates a timestamp in the proper DSA format.
   static getTs() {
     let d = new Date();
-
     if (d.getTime() === this._lastTs) {
       return this._lastTsStr;
     }
-
     ValueUpdate._lastTs = d.getTime();
     let offsetISOStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
     ValueUpdate._lastTsStr = `${offsetISOStr.slice(0, -1)}${timeZone(d)}`;
     return this._lastTsStr;
-  } /// Gets a [DateTime] representation of the timestamp for this value.
-
-
+  }
+  /// Gets a [DateTime] representation of the timestamp for this value.
   get timestamp() {
     if (this._timestamp == null) {
       this._timestamp = new Date(this.ts);
     }
-
     return this._timestamp;
   }
-
   static merge(oldUpdate, newUpdate) {
     let newValue = new ValueUpdate(null);
     newValue.value = newUpdate.value;
@@ -6815,25 +6433,21 @@ class ValueUpdate {
     newValue.count = oldUpdate.count + newUpdate.count;
     newValue.created = newUpdate.created;
     return newValue;
-  } /// Calculates the latency
-
-
+  }
+  /// Calculates the latency
   get latency() {
     if (!this._latency) {
       this._latency = this.timestamp.getTime() - this.created.getTime();
     }
-
     return this._latency;
-  } /// merge the new update into existing instance
-
-
+  }
+  /// merge the new update into existing instance
   mergeAdd(newUpdate) {
     this.value = newUpdate.value;
     this.ts = newUpdate.ts;
     this.status = newUpdate.status;
     this.count += newUpdate.count;
   }
-
   equals(other) {
     if (Array.isArray(this.value)) {
       // assume List is same if it's generated at same timestamp
@@ -6848,42 +6462,33 @@ class ValueUpdate {
     } else if (!Object.is(this.value, other.value)) {
       return false;
     }
-
     return other.ts === this.ts && other.count === this.count;
-  } /// Generates a map representation of this value update.
-
-
+  }
+  /// Generates a map representation of this value update.
   toMap() {
     let m = {
       ts: this.ts,
       value: this.value
     };
-
     if (this.count !== 1) {
       m['count'] = this.count;
     }
-
     if (this.status) {
       m['status'] = this.status;
     }
-
     return m;
   }
-
   cloneForAckQueue() {
     if (!this._cloned) {
       this._cloned = true;
       return this;
     }
-
     return new ValueUpdate(this.value, this.ts, {
       status: this.status,
       count: this.count
     });
   }
-
 }
-
 exports.ValueUpdate = ValueUpdate;
 ValueUpdate._lastTs = 0;
 },{}],"duux":[function(require,module,exports) {
@@ -6893,66 +6498,49 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.ListController = exports.ListDefListener = exports.RequesterListUpdate = exports.ReqListListener = void 0;
-
 const async_1 = require("../../utils/async");
-
 const node_cache_1 = require("../node_cache");
-
 const interface_1 = require("../interface");
-
-const value_1 = require("../../common/value"); // delay 3s for web appilcation and 50ms for nodejs
-
-
+const value_1 = require("../../common/value");
+// delay 3s for web appilcation and 50ms for nodejs
 const UNLIST_DELAY_MS = typeof window === 'undefined' ? 50 : 3000;
-
 class ReqListListener {
   /** @ignore */
   constructor(requester, path, callback, timeout) {
     this.requester = requester;
     this.path = path;
     this.callback = callback;
-
     this.callbackWrapper = value => {
       var _a;
-
       if (this.timeout) {
         clearTimeout(this.timeout);
         this.timeout = null;
       }
-
       (_a = this.callback) === null || _a === void 0 ? void 0 : _a.call(this, value);
     };
-
     this.onTimeOut = () => {
       this.timeout = null;
       let remoteNode = new node_cache_1.RemoteNode(this.path);
       remoteNode.configs.set('$disconnectedTs', value_1.ValueUpdate.getTs());
       this.callbackWrapper(new RequesterListUpdate(remoteNode, ['$disconnectedTs'], 'open'));
     };
-
     if (timeout) {
       this.timeout = setTimeout(this.onTimeOut, timeout);
     }
-
     let node = requester.nodeCache.getRemoteNode(path);
     this.listener = node._list(requester).listen(this.callbackWrapper);
   }
-
   close() {
     if (this.timeout) {
       clearTimeout(this.timeout);
     }
-
     this.callback = null;
     setTimeout(() => {
       this.listener.close();
     }, UNLIST_DELAY_MS);
   }
-
 }
-
 exports.ReqListListener = ReqListListener;
-
 class RequesterListUpdate extends interface_1.RequesterUpdate {
   /** @ignore */
   constructor(node, changes, streamStatus) {
@@ -6960,12 +6548,9 @@ class RequesterListUpdate extends interface_1.RequesterUpdate {
     this.node = node;
     this.changes = changes;
   }
-
 }
-
 exports.RequesterListUpdate = RequesterListUpdate;
 /** @ignore */
-
 class ListDefListener {
   constructor(node, requester, callback) {
     this.ready = false;
@@ -6973,42 +6558,31 @@ class ListDefListener {
     this.requester = requester;
     this.listener = requester.list(node.remotePath, update => {
       this.ready = update.streamStatus !== 'initialize';
-
       if (update.node.configs.has('$disconnectedTs')) {
         update.node.configs.delete('$disconnectedTs');
       }
-
       callback(update);
     });
   }
-
   close() {
     this.listener.close();
   }
-
 }
-
 exports.ListDefListener = ListDefListener;
 /** @ignore */
-
 class ListController {
   constructor(node, requester) {
     this.changes = new Set();
-
     this._onProfileUpdate = update => {
       if (this._profileLoader == null) {
         //      logger.finest('warning, unexpected state of profile loading');
         return;
       }
-
       this._profileLoader.close();
-
       this._profileLoader = null;
-
       for (let change of update.changes) {
         if (!ListController._ignoreProfileProps.includes(change)) {
           this.changes.add(change);
-
           if (change.startsWith('$')) {
             if (!this.node.configs.has(change)) {
               this.node.configs.set(change, this.node.profile.configs.get(change));
@@ -7024,69 +6598,54 @@ class ListController {
           }
         }
       }
-
       this._ready = true;
       this.onProfileUpdated();
     };
-
     this._ready = true;
     this._pendingRemoveDef = false;
-
     this.onStartListen = () => {
       if (this.request == null && !this.waitToSend) {
         this.waitToSend = true;
         this.requester.addProcessor(this);
       }
     };
-
     this.waitToSend = false;
-
     this._onListen = callback => {
       if (this._ready && this.node._listed && this.request != null) {
         setTimeout(() => {
           if (this.request == null) {
             return;
           }
-
           let changes = [];
-
           for (let [key, v] of this.node.configs) {
             changes.push(key);
           }
-
           for (let [key, v] of this.node.attributes) {
             changes.push(key);
           }
-
           for (let [key, v] of this.node.children) {
             changes.push(key);
           }
-
           let update = new RequesterListUpdate(this.node, changes, this.request.streamStatus);
           callback(update);
         }, 0);
       }
     };
-
     this._onAllCancel = () => {
       this._destroy();
     };
-
     this.node = node;
     this.requester = requester;
     this.stream = new async_1.Stream(this.onStartListen, this._onAllCancel, this._onListen);
   }
-
   get initialized() {
     return this.request != null && this.request.streamStatus !== 'initialize';
   }
-
   onDisconnect() {
     this.disconnectTs = value_1.ValueUpdate.getTs();
     this.node.configs.set('$disconnectedTs', this.disconnectTs);
     this.stream.add(new RequesterListUpdate(this.node, ['$disconnectedTs'], this.request.streamStatus));
   }
-
   onReconnect() {
     if (this.disconnectTs != null) {
       this.node.configs.delete('$disconnectedTs');
@@ -7094,10 +6653,8 @@ class ListController {
       this.changes.add('$disconnectedTs');
     }
   }
-
   onUpdate(streamStatus, updates, columns, meta, error) {
     let reseted = false;
-
     if (!updates) {
       if (error) {
         updates = [['$disconnectedTs', value_1.ValueUpdate.getTs()]];
@@ -7105,16 +6662,13 @@ class ListController {
         updates = [];
       }
     }
-
     for (let update of updates) {
       let name;
       let value;
       let removed = false;
-
       if (Array.isArray(update)) {
         if (update.length > 0 && typeof update[0] === 'string') {
           name = update[0];
-
           if (update.length > 1) {
             value = update[1];
           }
@@ -7127,7 +6681,6 @@ class ListController {
         } else {
           continue; // invalid response
         }
-
         if (update['change'] === 'remove') {
           removed = true;
         } else {
@@ -7136,19 +6689,15 @@ class ListController {
       } else {
         continue; // invalid response
       }
-
       if (name.startsWith('$')) {
         if (!reseted && (name === '$is' || name === '$base' || name === '$disconnectedTs' && typeof value === 'string')) {
           reseted = true;
           this.node.resetNodeCache();
         }
-
         if (name === '$is') {
           this.loadProfile(value);
         }
-
         this.changes.add(name);
-
         if (removed) {
           this.node.configs.delete(name);
         } else {
@@ -7156,7 +6705,6 @@ class ListController {
         }
       } else if (name.startsWith('@')) {
         this.changes.add(name);
-
         if (removed) {
           this.node.attributes.delete(name);
         } else {
@@ -7164,7 +6712,6 @@ class ListController {
         }
       } else {
         this.changes.add(name);
-
         if (removed) {
           this.node.children.delete(name);
         } else if (value != null && value instanceof Object) {
@@ -7173,101 +6720,79 @@ class ListController {
         }
       }
     }
-
     if (this.request.streamStatus !== 'initialize') {
       this.node._listed = true;
     }
-
     if (this._pendingRemoveDef) {
       this._checkRemoveDef();
     }
-
     this.onProfileUpdated();
   }
-
   loadProfile(defName) {
     this._ready = true;
     let defPath = defName;
-
     if (!defPath.startsWith('/')) {
       let base = this.node.configs.get('$base');
-
       if (typeof base === 'string') {
         defPath = `${base}/defs/profile/${defPath}`;
       } else {
         defPath = `/defs/profile/${defPath}`;
       }
     }
-
     if (this.node.profile instanceof node_cache_1.RemoteNode && this.node.profile.remotePath === defPath) {
       return;
     }
-
     this.node.profile = this.requester.nodeCache.getDefNode(defPath, defName);
-
     if (defName === 'node') {
       return;
     }
-
     if (this.node.profile instanceof node_cache_1.RemoteNode && !this.node.profile._listed) {
       this._ready = false;
       this._profileLoader = new ListDefListener(this.node.profile, this.requester, this._onProfileUpdate);
     }
   }
-
   onProfileUpdated() {
     if (this._ready) {
       if (this.request.streamStatus !== 'initialize') {
         this.stream.add(new RequesterListUpdate(this.node, Array.from(this.changes), this.request.streamStatus));
         this.changes.clear();
       }
-
       if (this.request && this.request.streamStatus === 'closed') {
         this.stream.close();
       }
     }
   }
-
   _checkRemoveDef() {
     this._pendingRemoveDef = false;
   }
-
   startSendingData(currentTime, waitingAckId) {
     if (!this.waitToSend) {
       return;
     }
-
     this.request = this.requester._sendRequest({
       method: 'list',
       path: this.node.remotePath
     }, this);
     this.waitToSend = false;
   }
-
   ackReceived(receiveAckId, startTime, currentTime) {}
-
   _destroy() {
     this.waitToSend = false;
-
     if (this._profileLoader != null) {
       this._profileLoader.close();
-
       this._profileLoader = null;
     }
-
     if (this.request != null) {
       this.requester.closeRequest(this.request);
       this.request = null;
     }
-
     this.stream.close();
     this.node._listController = null;
   }
-
 }
-
 exports.ListController = ListController;
-ListController._ignoreProfileProps = ['$is', // '$permission',
+ListController._ignoreProfileProps = ['$is',
+// '$permission',
 // '$settings',
 '$disconnectedTs'];
 },{"../../utils/async":"bajV","../node_cache":"jg7K","../interface":"wq45","../../common/value":"Re02"}],"YpSC":[function(require,module,exports) {
@@ -7277,83 +6802,73 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.ReqSubscribeController = exports.SubscribeRequest = exports.SubscribeController = exports.ReqSubscribeListener = void 0;
-
 const request_1 = require("../request");
-
 const value_1 = require("../../common/value");
-
-const connection_handler_1 = require("../../common/connection-handler"); // delay 3s for web appilcation and 50ms for nodejs
-
-
+const connection_handler_1 = require("../../common/connection-handler");
+// delay 3s for web appilcation and 50ms for nodejs
 const UNSUBSCRIBE_DELAY_MS = typeof window === 'undefined' ? 50 : 3000;
-
 class ReqSubscribeListener {
   /** @ignore */
   constructor(requester, path, callback, qos, timeout) {
     this.requester = requester;
     this.path = path;
     this.callback = callback;
-
     this.callbackWrapper = value => {
       var _a;
-
       if (this.timeout) {
         clearTimeout(this.timeout);
         this.timeout = null;
       }
-
       (_a = this.callback) === null || _a === void 0 ? void 0 : _a.call(this, value);
     };
-
     this.onTimeOut = () => {
       this.timeout = null;
       this.callbackWrapper(new value_1.ValueUpdate(null, null, {
         status: 'unknown'
       }));
     };
-
     let node = requester.nodeCache.getRemoteNode(path);
-
     if (timeout) {
       this.timeout = setTimeout(this.onTimeOut, timeout);
     }
-
     node._subscribe(requester, this.callbackWrapper, qos);
   }
-
   close() {
     if (this.timeout) {
       clearTimeout(this.timeout);
     }
-
     this.callback = null;
     setTimeout(() => {
       this.requester.unsubscribe(this.path, this.callbackWrapper);
     }, UNSUBSCRIBE_DELAY_MS);
   }
-
 }
-
-exports.ReqSubscribeListener = ReqSubscribeListener; /// only a place holder for reconnect and disconnect
+exports.ReqSubscribeListener = ReqSubscribeListener;
+/// only a place holder for reconnect and disconnect
 /// real logic is in SubscribeRequest itself
-
 /** @ignore */
-
 class SubscribeController {
-  onDisconnect() {// TODO: implement onDisconnect
+  constructor() {
+    this.disconnected = false;
   }
-
-  onReconnect() {// TODO: implement onReconnect
+  onDisconnect() {
+    this.disconnected = true;
+    console.log('SubscribeController: Disconnected');
+    // Add any specific resource cleanup or state change needed on disconnect
   }
-
-  onUpdate(status, updates, columns, meta, error) {// do nothing
+  onReconnect() {
+    this.disconnected = false;
+    console.log('SubscribeController: Reconnected');
+    if (this.request) {
+      this.request.resend();
+    }
   }
-
+  onUpdate(status, updates, columns, meta, error) {
+    // do nothing
+  }
 }
-
 exports.SubscribeController = SubscribeController;
 /** @ignore */
-
 class SubscribeRequest extends request_1.Request {
   constructor(requester, rid) {
     super(requester, rid, new SubscribeController(), null);
@@ -7368,7 +6883,6 @@ class SubscribeRequest extends request_1.Request {
     this._sendingAfterAck = false;
     this.updater.request = this;
   }
-
   getNextSid() {
     do {
       if (this.lastSid < 0x7fffffff) {
@@ -7377,29 +6891,23 @@ class SubscribeRequest extends request_1.Request {
         this.lastSid = 1;
       }
     } while (this.subscriptionIds.has(this.lastSid));
-
     return this.lastSid;
   }
-
   resend() {
     this.prepareSending();
   }
-
   _close(error) {
     if (this.subscriptions.size > 0) {
       for (let [key, s] of this.subscriptions) {
         this._changedPaths.add(key);
       }
     }
-
     this._waitingAckCount = 0;
     this._lastWatingAckId = -1;
     this._sendingAfterAck = false;
   }
-
   _update(m) {
     let updates = m['updates'];
-
     if (Array.isArray(updates)) {
       for (let update of updates) {
         let path;
@@ -7407,7 +6915,6 @@ class SubscribeRequest extends request_1.Request {
         let value;
         let ts;
         let options;
-
         if (Array.isArray(update) && update.length > 2) {
           if (typeof update[0] === 'string') {
             path = update[0];
@@ -7416,14 +6923,12 @@ class SubscribeRequest extends request_1.Request {
           } else {
             continue; // invalid response
           }
-
           value = update[1];
           ts = update[2];
         } else if (update != null && update instanceof Object) {
           if (typeof update['ts'] === 'string') {
             path = update['path'];
             ts = update['ts'];
-
             if (typeof update['path'] === 'string') {
               path = update['path'];
             } else if (typeof update['sid'] === 'number') {
@@ -7432,21 +6937,17 @@ class SubscribeRequest extends request_1.Request {
               continue; // invalid response
             }
           }
-
           value = update['value'];
           options = update;
         } else {
           continue; // invalid response
         }
-
         let controller;
-
         if (path != null) {
           controller = this.subscriptions.get(path);
         } else if (sid > -1) {
           controller = this.subscriptionIds.get(sid);
         }
-
         if (controller != null) {
           let valueUpdate = new value_1.ValueUpdate(value, ts, options);
           controller.addValue(valueUpdate);
@@ -7454,19 +6955,15 @@ class SubscribeRequest extends request_1.Request {
       }
     }
   }
-
   addSubscription(controller, level) {
     let path = controller.node.remotePath;
     this.subscriptions.set(path, controller);
     this.subscriptionIds.set(controller.sid, controller);
     this.prepareSending();
-
     this._changedPaths.add(path);
   }
-
   removeSubscription(controller) {
     let path = controller.node.remotePath;
-
     if (this.subscriptions.has(path)) {
       this.toRemove.set(this.subscriptions.get(path).sid, this.subscriptions.get(path));
       this.prepareSending();
@@ -7474,27 +6971,21 @@ class SubscribeRequest extends request_1.Request {
       console.error(`unexpected remoteSubscription in the requester, sid: ${controller.sid}`);
     }
   }
-
   startSendingData(currentTime, waitingAckId) {
     this._pendingSending = false;
-
     if (waitingAckId !== -1) {
       this._waitingAckCount++;
       this._lastWatingAckId = waitingAckId;
     }
-
     if (this.requester.connection == null) {
       return;
     }
-
     let toAdd = [];
     let processingPaths = this._changedPaths;
-
     if (processingPaths.size > 32) {
       processingPaths = new Set();
       let pendingPaths = new Set();
       let count = 0;
-
       for (let path of this._changedPaths) {
         if (++count > 32) {
           pendingPaths.add(path);
@@ -7502,13 +6993,11 @@ class SubscribeRequest extends request_1.Request {
           processingPaths.add(path);
         }
       }
-
       this._changedPaths = pendingPaths;
       this.prepareSending();
     } else {
       this._changedPaths = new Set();
     }
-
     for (let path of processingPaths) {
       if (this.subscriptions.has(path)) {
         let sub = this.subscriptions.get(path);
@@ -7516,83 +7005,66 @@ class SubscribeRequest extends request_1.Request {
           path,
           sid: sub.sid
         };
-
         if (sub.currentQos > 0) {
           m['qos'] = sub.currentQos;
         }
-
         toAdd.push(m);
       }
     }
-
     if (toAdd.length > 0) {
       this.requester._sendRequest({
         method: 'subscribe',
         paths: toAdd
       }, null);
     }
-
     if (this.toRemove.size > 0) {
       let removeSids = [];
-
       for (let [sid, sub] of this.toRemove) {
         if (removeSids.length >= 32) {
           this.prepareSending();
           break;
         }
-
         if (sub.callbacks.size === 0) {
           removeSids.push(sid);
           this.subscriptions.delete(sub.node.remotePath);
           this.subscriptionIds.delete(sub.sid);
-
           sub._destroy();
         }
-
         this.toRemove.delete(sid);
       }
-
       this.requester._sendRequest({
         method: 'unsubscribe',
         sids: removeSids
       }, null);
     }
   }
-
   ackReceived(receiveAckId, startTime, currentTime) {
     if (receiveAckId === this._lastWatingAckId) {
       this._waitingAckCount = 0;
     } else {
       this._waitingAckCount--;
     }
-
     if (this._sendingAfterAck) {
       this._sendingAfterAck = false;
       this.prepareSending();
     }
   }
-
   prepareSending() {
     if (this._sendingAfterAck) {
       return;
     }
-
     if (this._waitingAckCount > connection_handler_1.DSA_CONFIG.ackWaitCount) {
       this._sendingAfterAck = true;
       return;
     }
-
     if (!this._pendingSending) {
       this._pendingSending = true;
       this.requester.addProcessor(this);
     }
   }
-
 }
-
 exports.SubscribeRequest = SubscribeRequest;
 /** @ignore */
-
 class ReqSubscribeController {
   constructor(node, requester) {
     this.callbacks = new Map();
@@ -7601,25 +7073,20 @@ class ReqSubscribeController {
     this.requester = requester;
     this.sid = requester._subscription.getNextSid();
   }
-
   listen(callback, qos) {
     if (qos < 0 || qos > 3) {
       qos = 0;
     }
-
     let qosChanged = false;
-
     if (this.callbacks.has(callback)) {
       this.callbacks.set(callback, qos);
       qosChanged = this.updateQos();
     } else {
       this.callbacks.set(callback, qos);
-
       if (qos > this.currentQos) {
         qosChanged = true;
         this.currentQos = qos;
       }
-
       if (this._lastUpdate != null) {
         setTimeout(() => {
           if (this.callbacks.has(callback) && this._lastUpdate != null) {
@@ -7628,17 +7095,14 @@ class ReqSubscribeController {
         }, 0);
       }
     }
-
     if (qosChanged) {
       this.requester._subscription.addSubscription(this, this.currentQos);
     }
   }
-
   unlisten(callback) {
     if (this.callbacks.has(callback)) {
       let cacheLevel = this.callbacks.get(callback);
       this.callbacks.delete(callback);
-
       if (this.callbacks.size === 0) {
         this.requester._subscription.removeSubscription(this);
       } else if (cacheLevel === this.currentQos && this.currentQos > 1) {
@@ -7646,69 +7110,57 @@ class ReqSubscribeController {
       }
     }
   }
-
   updateQos() {
     let maxQos = 0;
-
     for (let qos of this.callbacks.values()) {
       maxQos = qos > maxQos ? qos : maxQos;
     }
-
     if (maxQos !== this.currentQos) {
       this.currentQos = maxQos;
       return true;
     }
-
     return false;
   }
-
   addValue(update) {
     this._lastUpdate = update;
-
     for (let callback of Array.from(this.callbacks.keys())) {
       callback(this._lastUpdate);
     }
   }
-
   _destroy() {
     this.callbacks.clear();
     this.node._subscribeController = null;
   }
-
 }
-
 exports.ReqSubscribeController = ReqSubscribeController;
 },{"../request":"wg7F","../../common/value":"Re02","../../common/connection-handler":"T61P"}],"nCNP":[function(require,module,exports) {
-"use strict"; // part of dslink.common;
+"use strict";
 
+// part of dslink.common;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Permission = void 0;
-
 class Permission {
   static parse(obj, defaultVal = Permission.NEVER) {
     if (typeof obj === 'string' && Permission.nameParser.hasOwnProperty(obj)) {
       return Permission.nameParser[obj];
     }
-
     return defaultVal;
   }
-
 }
-
-exports.Permission = Permission; /// now allowed to do anything
-
-Permission.NONE = 0; /// list node
-
-Permission.LIST = 1; /// read node
-
-Permission.READ = 2; /// write attribute and value
-
-Permission.WRITE = 3; /// config the node
-
-Permission.CONFIG = 4; /// something that can never happen
-
+exports.Permission = Permission;
+/// now allowed to do anything
+Permission.NONE = 0;
+/// list node
+Permission.LIST = 1;
+/// read node
+Permission.READ = 2;
+/// write attribute and value
+Permission.WRITE = 3;
+/// config the node
+Permission.CONFIG = 4;
+/// something that can never happen
 Permission.NEVER = 5;
 Permission.names = ['none', 'list', 'read', 'write', 'config', 'never'];
 Permission.nameParser = {
@@ -7726,31 +7178,25 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.TableMetadata = exports.TableColumns = exports.Table = exports.TableColumn = void 0;
-
 class TableColumn {
   constructor(name, type, defaultValue) {
     this.name = name;
     this.type = type;
     this.defaultValue = defaultValue;
   }
-
   getData() {
     let rslt = {
       type: this.type,
       name: this.name
     };
-
     if (this.defaultValue != null) {
       rslt['default'] = this.defaultValue;
     }
-
     return rslt;
-  } /// convert tableColumns into List of object
-
-
+  }
+  /// convert tableColumns into List of object
   static serializeColumns(list) {
     let rslts = [];
-
     for (let m of list) {
       if (m instanceof Object) {
         if (m instanceof TableColumn) {
@@ -7760,22 +7206,17 @@ class TableColumn {
         }
       }
     }
-
     return rslts;
-  } /// parse List of object into TableColumn
-
-
+  }
+  /// parse List of object into TableColumn
   static parseColumns(list) {
     let rslt = [];
-
     for (let m of list) {
       if (m != null && m instanceof Object && typeof m['name'] === 'string') {
         let type = 'string';
-
         if (typeof m['type'] === 'string') {
           type = m['type'];
         }
-
         rslt.push(new TableColumn(m['name'], type, m['default']));
       } else if (m instanceof TableColumn) {
         rslt.push(m);
@@ -7784,45 +7225,32 @@ class TableColumn {
         return null;
       }
     }
-
     return rslt;
   }
-
 }
-
 exports.TableColumn = TableColumn;
-
 class Table {
   constructor(columns, rows, meta) {
     this.columns = columns;
     this.rows = rows;
     this.meta = meta;
   }
-
   static parse(columns, rows, meta) {
     return new Table(TableColumn.parseColumns(columns), rows, meta);
   }
-
 }
-
 exports.Table = Table;
-
 class TableColumns {
   constructor(columns) {
     this.columns = columns;
   }
-
 }
-
 exports.TableColumns = TableColumns;
-
 class TableMetadata {
   constructor(meta) {
     this.meta = meta;
   }
-
 }
-
 exports.TableMetadata = TableMetadata;
 },{}],"yD6V":[function(require,module,exports) {
 "use strict";
@@ -7831,51 +7259,37 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.InvokeController = exports.RequesterInvokeStream = exports.RequesterInvokeUpdate = void 0;
-
 const async_1 = require("../../utils/async");
-
 const permission_1 = require("../../common/permission");
-
 const table_1 = require("../../common/table");
-
 const interface_1 = require("../interface");
-
 class RequesterInvokeUpdate extends interface_1.RequesterUpdate {
   constructor(updates, rawColumns, columns, streamStatus, meta, error) {
     super(streamStatus, error);
     this.updates = updates;
-
     if (rawColumns) {
       this.rawColumns = rawColumns;
       this.columns = table_1.TableColumn.parseColumns(rawColumns);
     } else {
       this.columns = columns;
     }
-
     this.meta = meta;
   }
-
   get rows() {
     let colLen = -1;
-
     if (this.columns != null) {
       colLen = this.columns.length;
     }
-
     if (this._rows == null) {
       this._rows = [];
-
       if (this.updates == null) {
         return this._rows;
       }
-
       for (let obj of this.updates) {
         let row;
-
         if (Array.isArray(obj)) {
           if (obj.length < colLen) {
             row = obj.concat();
-
             for (let i = obj.length; i < colLen; ++i) {
               row.push(this.columns[i].defaultValue);
             }
@@ -7891,12 +7305,10 @@ class RequesterInvokeUpdate extends interface_1.RequesterUpdate {
           }
         } else if (obj != null && obj instanceof Object) {
           row = [];
-
           if (this.columns == null) {
             let keys = obj.keys;
             this.columns = keys.map(x => new table_1.TableColumn(x, 'dynamic'));
           }
-
           if (this.columns != null) {
             for (let column of this.columns) {
               if (obj.hasOwnProperty(column.name)) {
@@ -7907,33 +7319,25 @@ class RequesterInvokeUpdate extends interface_1.RequesterUpdate {
             }
           }
         }
-
         this._rows.push(row);
       }
     }
-
     return this._rows;
   }
   /**
    * Convert the update to a simple js Object
    * If there are multiple rows, only the last row is returned
    */
-
-
   get result() {
     let rows = this.rows;
-
     if (rows.length) {
       let lastRow = rows[rows.length - 1];
-
       if (this.columns && this.columns.length >= lastRow.length) {
         let result = {};
-
         for (let i = 0; i < lastRow.length; ++i) {
           let col = this.columns[i].name;
           result[col] = lastRow[i];
         }
-
         return result;
       } else {
         return lastRow;
@@ -7942,11 +7346,8 @@ class RequesterInvokeUpdate extends interface_1.RequesterUpdate {
       return null;
     }
   }
-
 }
-
 exports.RequesterInvokeUpdate = RequesterInvokeUpdate;
-
 class RequesterInvokeStream extends async_1.Stream {
   addReqParams(m) {
     this.request.requester.addToSendList({
@@ -7954,23 +7355,18 @@ class RequesterInvokeStream extends async_1.Stream {
       params: m
     });
   }
-
 }
-
 exports.RequesterInvokeStream = RequesterInvokeStream;
 /** @ignore */
-
 class InvokeController {
   constructor(node, requester, params, maxPermission = permission_1.Permission.CONFIG) {
     this.mode = 'stream';
     this.lastStatus = 'initialize';
-
     this._onUnsubscribe = obj => {
       if (this._request != null && this._request.streamStatus !== 'closed') {
         this._request.close();
       }
     };
-
     this.node = node;
     this.requester = requester;
     this._stream = new RequesterInvokeStream();
@@ -7980,39 +7376,42 @@ class InvokeController {
       path: node.remotePath,
       params
     };
-
     if (maxPermission !== permission_1.Permission.CONFIG) {
       reqMap['permit'] = permission_1.Permission.names[maxPermission];
-    } // TODO: update node before invoke to load columns
+    }
+    // TODO: update node before invoke to load columns
     //    if(!node.isUpdated()) {
     //      node._list().listen( this._onNodeUpdate)
     //    } else {
-
-
     this._request = requester._sendRequest(reqMap, this);
-    this._stream.request = this._request; //    }
+    this._stream.request = this._request;
+    //    }
   }
-
   static getNodeColumns(node) {
     let columns = node.getConfig('$columns');
-
     if (!Array.isArray(columns) && node.profile != null) {
       columns = node.profile.getConfig('$columns');
     }
-
     if (Array.isArray(columns)) {
       return table_1.TableColumn.parseColumns(columns);
     }
-
     return null;
   }
-
   onUpdate(streamStatus, updates, columns, meta, error) {
     if (meta != null && typeof meta['mode'] === 'string') {
       this.mode = meta['mode'];
-    } // TODO: implement error
-
-
+    }
+    if (error != null) {
+      streamStatus = 'closed';
+      // Make sure _cachedColumns is initialized before passing to RequesterInvokeUpdate
+      if (!this._cachedColumns) {
+        this._cachedColumns = InvokeController.getNodeColumns(this.node) || [];
+      }
+      this._stream.add(new RequesterInvokeUpdate(null, null, this._cachedColumns, streamStatus, meta, error));
+      this._stream.close(); // Ensure stream is closed on error
+      this.lastStatus = streamStatus;
+      return; // Stop further processing if there's an error
+    }
     if (columns != null) {
       if (this._cachedColumns == null || this.mode === 'refresh') {
         this._cachedColumns = table_1.TableColumn.parseColumns(columns);
@@ -8022,28 +7421,20 @@ class InvokeController {
     } else if (this._cachedColumns == null) {
       this._cachedColumns = InvokeController.getNodeColumns(this.node);
     }
-
-    if (error != null) {
-      streamStatus = 'closed';
-
-      this._stream.add(new RequesterInvokeUpdate(null, null, null, streamStatus, meta, error));
-    } else if (updates != null || meta != null || streamStatus !== this.lastStatus) {
+    // Error handling is done above, so this part focuses on normal updates
+    if (updates != null || meta != null || streamStatus !== this.lastStatus) {
       this._stream.add(new RequesterInvokeUpdate(updates, columns, this._cachedColumns, streamStatus, meta));
     }
-
     this.lastStatus = streamStatus;
-
-    if (streamStatus === 'closed') {
+    // Stream closure on error is handled above.
+    // This handles closure for non-error "closed" status.
+    if (streamStatus === 'closed' && !error) {
       this._stream.close();
     }
   }
-
   onDisconnect() {}
-
   onReconnect() {}
-
 }
-
 exports.InvokeController = InvokeController;
 },{"../../utils/async":"bajV","../../common/permission":"nCNP","../../common/table":"qMgR","../interface":"wq45"}],"UldJ":[function(require,module,exports) {
 "use strict";
@@ -8052,11 +7443,9 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.DSA_VERSION = exports.buildEnumType = void 0;
-
 function buildEnumType(values) {
   return `enum[${values.join(',')}]`;
 }
-
 exports.buildEnumType = buildEnumType;
 exports.DSA_VERSION = '1.1.2';
 },{}],"jg7K":[function(require,module,exports) {
@@ -8065,129 +7454,93 @@ exports.DSA_VERSION = '1.1.2';
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.DefaultDefNodes = exports.RemoteDefNode = exports.RemoteNode = exports.RemoteNodeCache = void 0; /// manage cached nodes for requester
-
+exports.DefaultDefNodes = exports.RemoteDefNode = exports.RemoteNode = exports.RemoteNodeCache = void 0;
+/// manage cached nodes for requester
 const node_1 = require("../common/node");
-
 const list_1 = require("./request/list");
-
 const subscribe_1 = require("./request/subscribe");
-
 const permission_1 = require("../common/permission");
-
 const invoke_1 = require("./request/invoke");
-
 const utils_1 = require("../utils");
 /** @ignore */
-
-
 class RemoteNodeCache {
   constructor() {
     this._nodes = new Map();
   }
-
   RemoteNodeCache() {}
-
   getRemoteNode(path) {
     let node = this._nodes.get(path);
-
     if (node == null) {
-      if (this._nodes.size % 1000 === 0) {//        logger.fine("Node Cache hit ${this._nodes.length} nodes in size.");
+      if (this._nodes.size % 1000 === 0) {
+        //        logger.fine("Node Cache hit ${this._nodes.length} nodes in size.");
       }
-
       if (path.startsWith('defs')) {
         node = new RemoteDefNode(path);
-
         this._nodes.set(path, node);
       } else {
         node = new RemoteNode(path);
-
         this._nodes.set(path, node);
       }
     }
-
     return node;
   }
-
   cachedNodePaths() {
     return this._nodes.keys;
   }
-
   isNodeCached(path) {
     return this._nodes.has(path);
   }
-
   clearCachedNode(path) {
     this._nodes.delete(path);
   }
-
   clear() {
     this._nodes.clear();
   }
-
   getDefNode(path, defName) {
     if (DefaultDefNodes.nameMap.hasOwnProperty(defName)) {
       return DefaultDefNodes.nameMap[defName];
     }
-
     return this.getRemoteNode(path);
-  } /// update node with a map.
-
-
+  }
+  /// update node with a map.
   updateRemoteChildNode(parent, name, m) {
     let path;
-
     if (parent.remotePath === '/') {
       path = `/${name}`;
     } else {
       path = `${parent.remotePath}/${name}`;
     }
-
     let rslt;
-
     if (this._nodes.has(path)) {
       rslt = this._nodes.get(path);
       rslt.updateRemoteChildData(m, this);
     } else {
       rslt = new RemoteNode(path);
-
       this._nodes.set(path, rslt);
-
       rslt.updateRemoteChildData(m, this);
     }
-
     return rslt;
   }
-
 }
-
 exports.RemoteNodeCache = RemoteNodeCache;
-
 class RemoteNode extends node_1.Node {
   constructor(remotePath) {
     super();
     /** @ignore */
-
     this._listed = false;
     this.remotePath = remotePath;
-
     this._getRawName();
   }
   /** @ignore */
-
-
   get subscribeController() {
     return this._subscribeController;
   }
-
   get hasValueUpdate() {
     if (this._subscribeController == null) {
       return false;
     }
-
     return this._subscribeController._lastUpdate != null;
   }
-
   get lastValueUpdate() {
     if (this.hasValueUpdate) {
       return this._subscribeController._lastUpdate;
@@ -8196,94 +7549,69 @@ class RemoteNode extends node_1.Node {
     }
   }
   /** @ignore */
-
-
   _getRawName() {
     if (this.remotePath === '/') {
       this.name = '/';
     } else {
       this.name = this.remotePath.split('/').pop();
     }
-  } /// node data is not ready until all profile and mixins are updated
-
+  }
+  /// node data is not ready until all profile and mixins are updated
   /** @ignore */
-
-
   isUpdated() {
     if (!this.isSelfUpdated()) {
       return false;
     }
-
     if (this.profile instanceof RemoteNode && !this.profile.isSelfUpdated()) {
       return false;
     }
-
     return true;
-  } /// whether the node's own data is updated
-
+  }
+  /// whether the node's own data is updated
   /** @ignore */
-
-
   isSelfUpdated() {
     return this._listController != null && this._listController.initialized;
   }
   /** @ignore */
-
-
   _list(requester) {
     if (this._listController == null) {
       this._listController = this.createListController(requester);
     }
-
     return this._listController.stream;
-  } /// need a factory function for children class to override
-
+  }
+  /// need a factory function for children class to override
   /** @ignore */
-
-
   createListController(requester) {
     return new list_1.ListController(this, requester);
   }
   /** @ignore */
-
-
   _subscribe(requester, callback, qos) {
     if (this._subscribeController == null) {
       this._subscribeController = new subscribe_1.ReqSubscribeController(this, requester);
     }
-
     this._subscribeController.listen(callback, qos);
   }
   /** @ignore */
-
-
   _unsubscribe(requester, callback) {
     if (this._subscribeController != null) {
       this._subscribeController.unlisten(callback);
     }
   }
   /** @ignore */
-
-
   _invoke(params, requester, maxPermission = permission_1.Permission.CONFIG) {
     return new invoke_1.InvokeController(this, requester, params, maxPermission)._stream;
   }
   /** @ignore */
   /// used by list api to update simple data for children
-
-
   updateRemoteChildData(m, cache) {
     let childPathPre;
-
     if (this.remotePath === '/') {
       childPathPre = '/';
     } else {
       childPathPre = `${this.remotePath}/`;
     }
-
     for (let key in m) {
       let value = m[key];
-
       if (key.startsWith('$')) {
         this.configs.set(key, value);
       } else if (key.startsWith('@')) {
@@ -8291,65 +7619,48 @@ class RemoteNode extends node_1.Node {
       } else if (value != null && value instanceof Object) {
         let node = cache.getRemoteNode(`${childPathPre}/${key}`);
         this.children.set(key, node);
-
         if (node instanceof RemoteNode) {
           node.updateRemoteChildData(value, cache);
         }
       }
     }
-  } /// clear all configs attributes and children
-
+  }
+  /// clear all configs attributes and children
   /** @ignore */
-
-
   resetNodeCache() {
     this.configs.clear();
     this.attributes.clear();
     this.children.clear();
   }
   /** @ignore */
-
-
   save(includeValue = true) {
     let map = {};
-
     for (let [key, value] of this.configs) {
       map[key] = value;
     }
-
     for (let [key, value] of this.attributes) {
       map[key] = value;
     }
-
     for (let [key, node] of this.children) {
       map[key] = node instanceof RemoteNode ? node.save() : node.getSimpleMap();
     }
-
     if (includeValue && this._subscribeController != null && this._subscribeController._lastUpdate != null) {
       map['?value'] = this._subscribeController._lastUpdate.value;
       map['?value_timestamp'] = this._subscribeController._lastUpdate.ts;
     }
-
     return map;
   }
-
 }
-
 exports.RemoteNode = RemoteNode;
 /** @ignore */
-
 class RemoteDefNode extends RemoteNode {
   constructor(path) {
     super(path);
   }
-
 }
-
 exports.RemoteDefNode = RemoteDefNode;
 /** @ignore */
-
 class DefaultDefNodes {}
-
 exports.DefaultDefNodes = DefaultDefNodes;
 DefaultDefNodes._defaultDefs = {
   node: {},
@@ -8380,43 +7691,33 @@ DefaultDefNodes._defaultDefs = {
     }]
   }
 };
-
 DefaultDefNodes.nameMap = function () {
   let rslt = {};
-
   for (let k in DefaultDefNodes._defaultDefs) {
     let m = DefaultDefNodes._defaultDefs[k];
     let path = `/defs/profile/${k}`;
     let node = new RemoteDefNode(path);
-
     for (let n in m) {
       let v = DefaultDefNodes._defaultDefs[k];
-
       if (n.startsWith('$')) {
         node.configs.set(n, v);
       } else if (n.startsWith('@')) {
         node.attributes.set(n, v);
       }
     }
-
     node._listed = true;
     rslt[k] = node;
   }
-
   return rslt;
 }();
-
 DefaultDefNodes.pathMap = function () {
   let rslt = {};
-
   for (let k in DefaultDefNodes.nameMap) {
     let node = DefaultDefNodes.nameMap[k];
-
     if (node instanceof RemoteNode) {
       rslt[node.remotePath] = node;
     }
   }
-
   return rslt;
 }();
 },{"../common/node":"QClj","./request/list":"duux","./request/subscribe":"YpSC","../common/permission":"nCNP","./request/invoke":"yD6V","../utils":"UldJ"}],"wdMm":[function(require,module,exports) {
@@ -8426,15 +7727,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.SetController = void 0;
-
 const async_1 = require("../../utils/async");
-
 const permission_1 = require("../../common/permission");
-
 const interface_1 = require("../interface");
 /** @ignore */
-
-
 class SetController {
   constructor(requester, path, value, maxPermission = permission_1.Permission.CONFIG) {
     this.completer = new async_1.Completer();
@@ -8446,29 +7742,20 @@ class SetController {
       path: path,
       value: value
     };
-
     if (maxPermission !== permission_1.Permission.CONFIG) {
       reqMap['permit'] = permission_1.Permission.names[maxPermission];
     }
-
     this._request = requester._sendRequest(reqMap, this);
   }
-
   get future() {
     return this.completer.future;
   }
-
   onUpdate(status, updates, columns, meta, error) {
-    // TODO implement error
     this.completer.complete(new interface_1.RequesterUpdate(status, error));
   }
-
   onDisconnect() {}
-
   onReconnect() {}
-
 }
-
 exports.SetController = SetController;
 },{"../../utils/async":"bajV","../../common/permission":"nCNP","../interface":"wq45"}],"Eaoe":[function(require,module,exports) {
 "use strict";
@@ -8477,13 +7764,9 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.RemoveController = void 0;
-
 const async_1 = require("../../utils/async");
-
 const interface_1 = require("../interface");
 /** @ignore */
-
-
 class RemoveController {
   constructor(requester, path) {
     this.completer = new async_1.Completer();
@@ -8495,22 +7778,19 @@ class RemoveController {
     };
     this._request = requester._sendRequest(reqMap, this);
   }
-
   get future() {
     return this.completer.future;
   }
-
   onUpdate(status, updates, columns, meta, error) {
-    // TODO implement error
-    this.completer.complete(new interface_1.RequesterUpdate(status));
+    if (error) {
+      this.completer.completeError(error);
+    } else {
+      this.completer.complete(new interface_1.RequesterUpdate(status));
+    }
   }
-
   onDisconnect() {}
-
   onReconnect() {}
-
 }
-
 exports.RemoveController = RemoveController;
 },{"../../utils/async":"bajV","../interface":"wq45"}],"wp3k":[function(require,module,exports) {
 "use strict";
@@ -8529,19 +7809,16 @@ const operationMap = {
   '>=': filter => new GreaterEqualFilter(filter),
   '<=': filter => new LessEqualFilter(filter)
 };
-const summaryConfigs = ['$is', '$type', '$invokable', '$writable', '$params', '$columns', '$result'];
-
+const summaryConfigs = ['$is', '$type', '$invokable', '$writable', '$params', '$columns', '$result', '$control'];
 class QueryFilter {
   static create(requester, path, onChange, filter, summary, timeoutMs) {
     let result;
-
     for (let op in operationMap) {
       if (op in filter) {
         result = operationMap[op](filter);
         break;
       }
     }
-
     if (result) {
       result.requester = requester;
       result.path = path;
@@ -8549,55 +7826,50 @@ class QueryFilter {
       result.summary = summary;
       result.timeoutMs = timeoutMs;
     }
-
     return result;
   }
-
 }
-
 exports.QueryFilter = QueryFilter;
-
 class ValueFilter extends QueryFilter {
   constructor(filter) {
     super();
     this._ready = false;
-    this._invalid = false;
-
+    this._errorMessages = [];
     this.subscribeCallback = update => {
-      this.value = update.value; // TODO maintain list of error state
-
-      this._invalid = Boolean(update.status);
+      this.value = update.value;
+      if (update.status && update.status !== 'ok') {
+        // Assuming 'ok' or lack of status means no error
+        this._errorMessages.push(`Error status: ${update.status}`);
+      }
+      // Potentially, clear errors if a new valid update arrives
+      // else {
+      //   this._errorMessages = [];
+      // }
       this._ready = true;
       this.onChange();
-
       if (!this.live && this.listener) {
         this.listener.close();
         this.listener = null;
       }
     };
-
     this.listCallback = update => {
       this.value = update.node.get(this.field);
       this._ready = true;
       this.onChange();
-
       if (!this.live && this.listener) {
         this.listener.close();
         this.listener = null;
       }
     };
-
     this.field = filter.field;
     this.live = filter.mode === 'live';
   }
-
   start() {
     if (!this.field) {
-      this._invalid = true;
+      this._errorMessages.push("Field is not defined for the filter.");
       this._ready = true;
       return;
     }
-
     if (!this.listener) {
       if (this.field === '?value') {
         this.listener = this.requester.subscribe(this.path, this.subscribeCallback, 0, this.timeoutMs);
@@ -8614,34 +7886,29 @@ class ValueFilter extends QueryFilter {
       }
     }
   }
-
   check() {
     if (!this._ready) {
       return [false, false];
     }
-
-    if (this._invalid) {
+    if (this._errorMessages.length > 0) {
+      // If there are error messages, the filter is considered invalid for matching purposes,
+      // but ready in terms of its lifecycle (it has attempted to process).
       return [false, true];
     }
-
     return [this.compare(), true];
   }
-
   destroy() {
     if (this.listener) {
       this.listener.close();
       this.listener = null;
     }
   }
-
 }
-
 class EqualsFilter extends ValueFilter {
   constructor(filter) {
     super(filter);
     this.target = filter['='];
   }
-
   compare() {
     if (this.target == null) {
       // null and undefined should be treated as equal
@@ -8650,15 +7917,12 @@ class EqualsFilter extends ValueFilter {
       return this.value === this.target;
     }
   }
-
 }
-
 class NotEqualsFilter extends ValueFilter {
   constructor(filter) {
     super(filter);
     this.target = filter['!='];
   }
-
   compare() {
     if (this.target == null) {
       // null and undefined should be treated as equal
@@ -8667,64 +7931,49 @@ class NotEqualsFilter extends ValueFilter {
       return this.value !== this.target;
     }
   }
-
 }
-
 class GreaterFilter extends ValueFilter {
   constructor(filter) {
     super(filter);
     this.target = filter['>'];
   }
-
   compare() {
     return this.value > this.target;
   }
-
 }
-
 class LessFilter extends ValueFilter {
   constructor(filter) {
     super(filter);
     this.target = filter['<'];
   }
-
   compare() {
     return this.value < this.target;
   }
-
 }
-
 class GreaterEqualFilter extends ValueFilter {
   constructor(filter) {
     super(filter);
     this.target = filter['>='];
   }
-
   compare() {
     return this.value >= this.target;
   }
-
 }
-
 class LessEqualFilter extends ValueFilter {
   constructor(filter) {
     super(filter);
     this.target = filter['<='];
   }
-
   compare() {
     return this.value <= this.target;
   }
-
 }
-
 class MultiFilter extends QueryFilter {
   constructor() {
     super(...arguments);
     this.filterData = [];
     this.filters = [];
   }
-
   initFilters() {
     if (this.filters.length === 0) {
       for (let filter of this.filterData) {
@@ -8732,38 +7981,29 @@ class MultiFilter extends QueryFilter {
       }
     }
   }
-
   start() {
     this.initFilters();
-
     for (let filter of this.filters) {
       filter.start();
     }
   }
-
   destroy() {
     for (let filter of this.filters) {
       filter.destroy();
     }
   }
-
 }
-
 class AllFilter extends MultiFilter {
   constructor(filter) {
     super();
-
     if (Array.isArray(filter.all)) {
       this.filterData = filter.all;
     }
   }
-
   check() {
     let matched = true;
-
     for (let filter of this.filters) {
       let [m, r] = filter.check();
-
       if (r) {
         if (!m) {
           matched = false;
@@ -8773,25 +8013,19 @@ class AllFilter extends MultiFilter {
         return [false, false];
       }
     }
-
     return [matched, true];
   }
-
 }
-
 class AnyFilter extends MultiFilter {
   constructor(filter) {
     super();
-
     if (Array.isArray(filter.any)) {
       this.filterData = filter.any;
     }
   }
-
   check() {
     for (let filter of this.filters) {
       let [m, r] = filter.check();
-
       if (r) {
         if (m) {
           return [true, true];
@@ -8801,10 +8035,8 @@ class AnyFilter extends MultiFilter {
         return [false, false];
       }
     }
-
     return [false, true];
   }
-
 }
 },{}],"kDc5":[function(require,module,exports) {
 "use strict";
@@ -8813,9 +8045,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.NodeQueryResult = void 0;
-
 const node_1 = require("../../common/node");
-
 class NodeQueryResult extends node_1.Node {
   constructor(path, nodeQuery, value, configs, attributes, children) {
     super();
@@ -8828,22 +8058,18 @@ class NodeQueryResult extends node_1.Node {
       children
     });
   }
-
   listen(listener, useCache = true) {
     return this.nodeQuery.listen(listener, useCache);
   }
-
   updateNode(node) {
     this.value = node.value;
     this.configs = node.configs;
     this.attributes = node.attributes;
     this.children = node.children;
   }
-
   clone() {
     return new NodeQueryResult(this.path, this.nodeQuery, this.value, this.configs, this.attributes, this.children);
   }
-
   isSame(node) {
     const {
       value,
@@ -8851,76 +8077,58 @@ class NodeQueryResult extends node_1.Node {
       attributes,
       children
     } = node;
-
     if (value !== this.value || configs.size !== this.configs.size || attributes.size !== this.attributes.size || children.size !== this.children.size) {
       return false;
     }
-
     for (let [key, value] of this.configs) {
       if (configs.get(key) !== value) {
         return false;
       }
     }
-
     for (let [key, value] of this.attributes) {
       if (attributes.get(key) !== value) {
         return false;
       }
     }
-
     for (let [key, value] of this.children) {
       if (children.get(key) !== value) {
         return false;
       }
     }
-
     return true;
   }
-
   getActionCallback() {
     if (this.actionCallback) {
       return this.actionCallback;
     }
-
     let callback = params => this.nodeQuery.requester.invokeOnce(this.path, params);
-
     this.actionCallback = callback;
     return callback;
   }
-
   toObject() {
     let {
       query,
       summary
     } = this.nodeQuery;
-
     if (this.getConfig('$invokable') || (summary === null || summary === void 0 ? void 0 : summary.getConfig('$invokable'))) {
       return this.getActionCallback();
     }
-
     let result = {};
-
     for (let [key, value] of this.configs) {
       result[key] = value;
     }
-
     for (let [key, value] of this.attributes) {
       result[key] = value;
     }
-
     for (let [key, value] of this.children) {
       result[key] = value.toObject();
     }
-
     if (this.value !== undefined) {
       result['$value'] = this.value;
     }
-
     return result;
   }
-
 }
-
 exports.NodeQueryResult = NodeQueryResult;
 },{"../../common/node":"QClj"}],"DE2K":[function(require,module,exports) {
 "use strict";
@@ -8929,39 +8137,28 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Query = void 0;
-
 const filter_1 = require("./filter");
-
 const async_1 = require("../../utils/async");
-
 const result_1 = require("./result");
-
 const node_1 = require("../../common/node");
-
 const actionSubQuery = {
   '?configs': '*'
 };
-
 function copyMapWithFilter(m, filter) {
   if (!filter) {
     return new Map();
   }
-
   if (filter[0] === '*') {
     return new Map(m[Symbol.iterator]());
   }
-
   const result = new Map();
-
   for (let [key, value] of m) {
     if (filter.includes(key)) {
       result.set(key, value);
     }
   }
-
   return result;
 }
-
 class Query extends async_1.Stream {
   constructor(parent, path, query, summary, timeoutMs) {
     super(null, null, null, true);
@@ -8969,24 +8166,20 @@ class Query extends async_1.Stream {
     this.path = path;
     this.query = query;
     this.summary = summary;
-    this.timeoutMs = timeoutMs; // used on named child query. parent should know if children node exist or not
-
-    this.exists = true; // fixed children will stay in memory even when parent node is filtered out
+    this.timeoutMs = timeoutMs;
+    // used on named child query. parent should know if children node exist or not
+    this.exists = true;
+    // fixed children will stay in memory even when parent node is filtered out
     // once fixed children is started, they will keep running until parent is destroyed
-
     this.fixedChildren = new Map();
-
     this.checkGenerateOutput = () => {
       if (!this._scheduleOutputTimeout) {
         return;
       }
-
       this._scheduleOutputTimeout = null;
-
       if (this.isNodeReady()) {
         let configs;
         let attributes;
-
         if (this.listResult) {
           configs = copyMapWithFilter(this.listResult.configs, this.configFilter);
           attributes = copyMapWithFilter(this.listResult.attributes, this.attributeFilter);
@@ -8994,15 +8187,12 @@ class Query extends async_1.Stream {
           configs = new Map();
           attributes = new Map();
         }
-
         let children = new Map();
-
         for (let [key, query] of this.fixedChildren) {
           if (query.exists && query._filterMatched && query._value && !query.disconnected) {
             children.set(key, query._value);
           }
         }
-
         if (this.dynamicChildren) {
           for (let [key, query] of this.dynamicChildren) {
             if (query._filterMatched && query._value) {
@@ -9010,16 +8200,12 @@ class Query extends async_1.Stream {
             }
           }
         }
-
         let newNode = new result_1.NodeQueryResult(this.path, this, this.subscribeResult, configs, attributes, children);
-
         if (this._value) {
           if (this._value.isSame(newNode)) {
             return;
           }
-
           this._value.updateNode(newNode);
-
           this.add(this._value);
         } else {
           this.add(newNode);
@@ -9028,65 +8214,49 @@ class Query extends async_1.Stream {
       } else {
         if (!this._filterMatched && this._value != null) {
           this._listeners.clear(); // ignore all previous listeners when node is filtered out
-
-
           this.add(null);
         }
-
         if (this._filterReady) {
           this.parent.scheduleOutput();
         }
       }
     };
-
     this._started = false;
-
     this.onFilterUpdate = () => {
       if (this.filter && !this.checkFilterTimer) {
         this.checkFilterTimer = setTimeout(this.checkFilter, 0);
       }
     };
-
     this._filterReady = false;
-
     this.checkFilter = () => {
       if (!this.checkFilterTimer) {
         return;
       }
-
       this.checkFilterTimer = null;
-
       if (this.filter) {
         let [matched, ready] = this.filter.check();
         this.setFilterMatched(matched && this._started);
         this.setFilterReady(ready);
       }
     };
-
     this._filterMatched = false;
     this._subscribeReady = false;
-
     this.subscribeCallback = update => {
       if (this.valueMode === 'snapshot') {
         this.subscribeListener.close();
         this.subscribeListener = null;
       }
-
       this.subscribeResult = update.value;
       this.setSubscribeReady(true);
     };
-
     this._listReady = false;
-
     this.listCallback = update => {
       if (this.childrenMode === 'snapshot') {
         this.listListener.close();
         this.listListener = null;
       }
-
       this.listResult = update.node;
       this.disconnected = Boolean(this.listResult.getConfig('$disconnectedTs'));
-
       if (this.dynamicChildren) {
         if (this.requester._connected) {
           // do not remove existing nodes when link is disconnected
@@ -9098,19 +8268,15 @@ class Query extends async_1.Stream {
             }
           }
         }
-
         for (let [key, child] of update.node.children) {
           if (!this.fixedChildren.has(key) && !this.dynamicChildren.has(key)) {
             let subQueryInput = this.dynamicQuery;
-
             if (child.configs.has('$invokable')) {
               if (!this.actionFilter || !this.actionFilter.includes(key) && this.actionFilter[0] !== '*') {
                 continue;
               }
-
               subQueryInput = actionSubQuery;
             }
-
             if (subQueryInput) {
               let childQuery = new Query(this, node_1.Path.concat(this.path, key), subQueryInput, child);
               this.dynamicChildren.set(key, childQuery);
@@ -9119,50 +8285,39 @@ class Query extends async_1.Stream {
           }
         }
       }
-
       for (let [name, child] of this.fixedChildren) {
         let exists = update.node.children.has(name);
-
         if (exists !== child.exists) {
           child.exists = exists;
           this.scheduleOutput();
         }
       }
-
       this.setListReady(true);
     };
-
     this.requester = parent.requester;
-
     if (this.timeoutMs == null) {
       this.timeoutMs = parent.timeoutMs;
     }
-
     this.valueMode = query['?value'];
     this.childrenMode = query['?children'];
-
     if (Array.isArray(query['?configs'])) {
       this.configFilter = query['?configs'];
     } else if (query['?configs'] === '*') {
       this.configFilter = ['*'];
     }
-
     if (Array.isArray(query['?attributes'])) {
       this.attributeFilter = query['?attributes'];
     } else if (query['?attributes'] === '*') {
       this.attributeFilter = ['*'];
     }
-
     if (Array.isArray(query['?actions'])) {
       this.actionFilter = query['?actions'];
     } else if (query['?actions'] === '*') {
       this.actionFilter = ['*'];
     }
-
     if (query.hasOwnProperty('*') || query.hasOwnProperty('?actions')) {
       this.dynamicChildren = new Map();
     }
-
     for (let key in query) {
       if (!(key.startsWith('$') || key.startsWith('@') || key.startsWith('?')) && query[key] instanceof Object) {
         if (key === '*') {
@@ -9172,35 +8327,28 @@ class Query extends async_1.Stream {
         }
       }
     }
-
     if (!this.childrenMode && (this.configFilter || this.attributeFilter || this.actionFilter || this.dynamicQuery)) {
       this.childrenMode = 'snapshot';
     }
-
     if (query['?filter']) {
       this.filter = filter_1.QueryFilter.create(this.requester, path, this.onFilterUpdate, query['?filter'], this.summary, this.timeoutMs);
     }
   }
-
   isQueryReadyAsChild() {
     return this._filterReady && (this._value || !this._filterMatched);
   }
-
   isNodeReady() {
     if (!this._filterReady || !this._filterMatched) {
       return false;
     }
-
     if (!this._subscribeReady || !this._listReady) {
       return false;
     }
-
     for (let [key, query] of this.fixedChildren) {
       if (!query.isQueryReadyAsChild()) {
         return false;
       }
     }
-
     if (this.dynamicChildren) {
       for (let [key, query] of this.dynamicChildren) {
         if (!query.isQueryReadyAsChild()) {
@@ -9208,19 +8356,15 @@ class Query extends async_1.Stream {
         }
       }
     }
-
     return true;
   }
-
   scheduleOutput() {
     if (!this._scheduleOutputTimeout) {
       this._scheduleOutputTimeout = setTimeout(this.checkGenerateOutput, 0);
     }
   }
-
   start() {
     this._started = true;
-
     if (this.filter) {
       this.filter.start();
       this.checkFilter();
@@ -9229,31 +8373,25 @@ class Query extends async_1.Stream {
       this.setFilterReady(true);
     }
   }
-
   pause(destroyed = false) {
     this._started = false;
     this.pauseSubscription(destroyed);
   }
-
   pauseSubscription(destroyed = false) {
     if (this.subscribeListener) {
       this.subscribeListener.close();
       this.subscribeListener = null;
-
       if (!destroyed) {
         this.setSubscribeReady(false);
       }
     }
-
     if (this.listListener) {
       this.listListener.close();
       this.listListener = null;
-
       if (!destroyed) {
         this.setListReady(false);
       }
     }
-
     for (let [key, query] of this.fixedChildren) {
       if (destroyed) {
         query.destroy();
@@ -9261,42 +8399,34 @@ class Query extends async_1.Stream {
         query.pause();
       }
     }
-
     if (this.dynamicChildren) {
       for (let [key, query] of this.dynamicChildren) {
         query.destroy();
       }
-
       this.dynamicChildren.clear();
     }
   }
-
   setFilterReady(val) {
     if (val !== this._filterReady) {
       this._filterReady = val;
       this.scheduleOutput();
     }
   }
-
   setFilterMatched(val) {
     if (val !== this._filterMatched) {
       this._filterMatched = val;
-
       if (val) {
         this.startSubscription();
       } else {
         this.pauseSubscription();
       }
-
       this.scheduleOutput();
     }
   }
-
   startSubscription() {
     for (let [key, query] of this.fixedChildren) {
       query.start();
     }
-
     if (this.valueMode && (this.summary == null || this.summary.getConfig('$type'))) {
       if (!this.subscribeListener) {
         this.setSubscribeReady(false);
@@ -9305,7 +8435,6 @@ class Query extends async_1.Stream {
     } else {
       this.setSubscribeReady(true);
     }
-
     if (this.childrenMode) {
       if (!this.listListener) {
         this.setListReady(false);
@@ -9315,41 +8444,31 @@ class Query extends async_1.Stream {
       this.setListReady(true);
     }
   }
-
   setSubscribeReady(val) {
     if (val !== this._subscribeReady) {
       this._subscribeReady = val;
     }
-
     this.scheduleOutput();
   }
-
   setListReady(val) {
     if (val !== this._listReady) {
       this._listReady = val;
     }
-
     this.scheduleOutput();
   }
-
   destroy() {
     if (this.checkFilterTimer) {
       clearTimeout(this.checkFilterTimer);
     }
-
     if (this._scheduleOutputTimeout) {
       clearTimeout(this._scheduleOutputTimeout);
     }
-
     if (this.filter) {
       this.filter.destroy();
     }
-
     this.pause(true);
   }
-
 }
-
 exports.Query = Query;
 },{"./filter":"wp3k","../../utils/async":"bajV","./result":"kDc5","../../common/node":"QClj"}],"L6cl":[function(require,module,exports) {
 "use strict";
@@ -9358,39 +8477,24 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Requester = void 0;
-
 const async_1 = require("../utils/async");
-
 const request_1 = require("./request");
-
 const connection_handler_1 = require("../common/connection-handler");
-
 const node_cache_1 = require("./node_cache");
-
 const subscribe_1 = require("./request/subscribe");
-
 const interfaces_1 = require("../common/interfaces");
-
 const list_1 = require("./request/list");
-
 const permission_1 = require("../common/permission");
-
 const invoke_1 = require("./request/invoke");
-
 const set_1 = require("./request/set");
-
 const remove_1 = require("./request/remove");
-
 const query_1 = require("./query/query");
-
 class Requester extends connection_handler_1.ConnectionHandler {
   constructor(cache) {
     super();
     /** @ignore */
-
     this._requests = new Map();
     /** @ignore */
-
     this.onData = list => {
       if (Array.isArray(list)) {
         for (let resp of list) {
@@ -9401,39 +8505,28 @@ class Requester extends connection_handler_1.ConnectionHandler {
       }
     };
     /** @ignore */
-
-
     this.onError = new async_1.Stream();
     /** @ignore */
-
     this.lastRid = 0;
     /** @ignore */
-
     this._connected = false;
     this.nodeCache = cache ? cache : new node_cache_1.RemoteNodeCache();
     this._subscription = new subscribe_1.SubscribeRequest(this, 0);
-
     this._requests.set(0, this._subscription);
   }
-
   get subscriptionCount() {
     return this._subscription.subscriptions.size;
   }
-
   get openRequestCount() {
     return this._requests.size;
   }
   /** @ignore */
-
-
   _onReceiveUpdate(m) {
     if (typeof m['rid'] === 'number' && this._requests.has(m['rid'])) {
       this._requests.get(m['rid'])._update(m);
     }
   }
   /** @ignore */
-
-
   getNextRid() {
     do {
       if (this.lastRid < 0x7fffffff) {
@@ -9442,42 +8535,30 @@ class Requester extends connection_handler_1.ConnectionHandler {
         this.lastRid = 1;
       }
     } while (this._requests.has(this.lastRid));
-
     return this.lastRid;
   }
   /** @ignore */
-
-
   getSendingData(currentTime, waitingAckId) {
     let rslt = super.getSendingData(currentTime, waitingAckId);
     return rslt;
   }
   /** @ignore */
-
-
   sendRequest(m, updater) {
     return this._sendRequest(m, updater);
   }
   /** @ignore */
-
-
   _sendRequest(m, updater) {
     m['rid'] = this.getNextRid();
     let req;
-
     if (updater != null) {
       req = new request_1.Request(this, this.lastRid, updater, m);
-
       this._requests.set(this.lastRid, req);
     }
-
     if (this._conn) {
       this.addToSendList(m);
     }
-
     return req;
   }
-
   isNodeCached(path) {
     return this.nodeCache.isNodeCached(path);
   }
@@ -9493,24 +8574,17 @@ class Requester extends connection_handler_1.ConnectionHandler {
    *   - 0: allow value skipping as long as the last update is received
    *   - 1: no value skipping
    */
-
-
   subscribe(path, callback, qos = 0, timeoutMs) {
     return new subscribe_1.ReqSubscribeListener(this, path, callback, qos, timeoutMs);
   }
   /**
    * Unsubscribe the callback
    */
-
-
   unsubscribe(path, callback) {
     let node = this.nodeCache.getRemoteNode(path);
-
     node._unsubscribe(this, callback);
   }
   /** @ignore */
-
-
   onValueChange(path, qos = 0) {
     let listener;
     let stream;
@@ -9531,13 +8605,10 @@ class Requester extends connection_handler_1.ConnectionHandler {
   /**
    * Subscribe and get value update only once, subscription will be closed automatically when an update is received
    */
-
-
   subscribeOnce(path, timeoutMs) {
     return new Promise((resolve, reject) => {
       let listener = this.subscribe(path, update => {
         resolve(update);
-
         if (listener != null) {
           listener.close();
           listener = null;
@@ -9551,25 +8622,19 @@ class Requester extends connection_handler_1.ConnectionHandler {
    *
    * A Subscription should be closed with [[StreamSubscription.close]] when it's no longer needed.
    */
-
-
   list(path, callback, timeoutMs) {
     return new list_1.ReqListListener(this, path, callback, timeoutMs);
   }
   /**
    * List and get node metadata and children summary only once, subscription will be closed automatically when an update is received
    */
-
-
   listOnce(path, timeoutMs) {
     return new Promise((resolve, reject) => {
       let listener = this.list(path, update => {
         if (update.streamStatus === 'initialize') {
           return;
         }
-
         resolve(update.node);
-
         if (listener != null) {
           listener.close();
           listener = null;
@@ -9582,13 +8647,9 @@ class Requester extends connection_handler_1.ConnectionHandler {
    * Usually an action stream will be closed on server side,
    * but in the case of a streaming action the returned stream needs to be closed with [[RequesterInvokeStream.close]]
    */
-
-
   invoke(path, params = {}, callback, maxPermission = permission_1.Permission.CONFIG) {
     let node = this.nodeCache.getRemoteNode(path);
-
     let stream = node._invoke(params, this, maxPermission);
-
     let mergedUpdate = [];
     let mappedStream = new invoke_1.RequesterInvokeStream();
     mappedStream.request = stream.request;
@@ -9596,25 +8657,19 @@ class Requester extends connection_handler_1.ConnectionHandler {
       if (mergedUpdate) {
         update.updates = mergedUpdate.concat(update.updates);
       }
-
       mergedUpdate = update.updates;
-
       if (update.streamStatus !== 'initialize') {
         mappedStream.add(update);
       }
     });
-
     if (callback) {
       mappedStream.listen(callback);
     }
-
     return mappedStream;
   }
   /**
    * Invoke a node action, and receive update only once, stream will be closed automatically if necessary
    */
-
-
   invokeOnce(path, params = {}, maxPermission = permission_1.Permission.CONFIG) {
     let stream = this.invoke(path, params, null, maxPermission);
     return new Promise((resolve, reject) => {
@@ -9622,7 +8677,6 @@ class Requester extends connection_handler_1.ConnectionHandler {
         if (update.streamStatus !== 'closed') {
           stream.close();
         }
-
         if (update.error) {
           reject(update.error);
         } else {
@@ -9635,32 +8689,23 @@ class Requester extends connection_handler_1.ConnectionHandler {
    * Invoke a node action, and receive raw update.
    * Steaming updates won't be merged
    */
-
-
   invokeStream(path, params = {}, callback, maxPermission = permission_1.Permission.CONFIG) {
     let node = this.nodeCache.getRemoteNode(path);
-
     let stream = node._invoke(params, this, maxPermission);
-
     if (callback) {
       stream.listen(callback);
     }
-
     return stream;
   }
   /**
    * Set the value of an attribute, the attribute will be created if not exists
    */
-
-
   set(path, value, maxPermission = permission_1.Permission.CONFIG) {
     return new set_1.SetController(this, path, value, maxPermission).future;
   }
   /**
    * Remove an attribute
    */
-
-
   remove(path) {
     return new remove_1.RemoveController(this, path).future;
   }
@@ -9675,43 +8720,33 @@ class Requester extends connection_handler_1.ConnectionHandler {
    *  - child is removed or new child is added when wildcard children match * is defined
    * @param timeoutMs Timeout of the list and subscribe request used by the query
    */
-
-
   query(path, queryStruct, callback, timeoutMs) {
     queryStruct = Object.assign({}, queryStruct);
     delete queryStruct.$filter; // make sure root node has no filter;
-
     let query = new query_1.Query({
       requester: this,
       scheduleOutput: () => {}
     }, path, queryStruct, null, timeoutMs);
-
     query._onAllCancel = () => query.destroy();
-
     query.start();
     return query.listen(callback);
   }
   /**
    * Query and get update only once, query will be closed automatically when an update is received
    */
-
-
   queryOnce(path, queryStruct, timeoutMs) {
     return new Promise((resolve, reject) => {
       let listener = this.query(path, queryStruct, update => {
         resolve(update);
-
         if (listener != null) {
           listener.close();
           listener = null;
         }
       }, timeoutMs);
     });
-  } /// close the request from requester side and notify responder
-
+  }
+  /// close the request from requester side and notify responder
   /** @ignore */
-
-
   closeRequest(request) {
     if (this._requests.has(request.rid)) {
       if (request.streamStatus !== 'closed') {
@@ -9720,21 +8755,16 @@ class Requester extends connection_handler_1.ConnectionHandler {
           rid: request.rid
         });
       }
-
       this._requests.delete(request.rid);
-
       request.close();
     }
   }
   /** @ignore */
-
-
   onDisconnected() {
     if (!this._connected) return;
     this._connected = false;
     let newRequests = new Map();
     newRequests.set(0, this._subscription);
-
     for (let [n, req] of this._requests) {
       if (req.rid <= this.lastRid && !(req.updater instanceof list_1.ListController)) {
         req._close(interfaces_1.DsError.DISCONNECTED);
@@ -9743,25 +8773,19 @@ class Requester extends connection_handler_1.ConnectionHandler {
         req.updater.onDisconnect();
       }
     }
-
     this._requests = newRequests;
   }
   /** @ignore */
-
-
   onReconnected() {
     if (this._connected) return;
     this._connected = true;
     super.onReconnected();
-
     for (let [n, req] of this._requests) {
       req.updater.onReconnect();
       req.resend();
     }
   }
-
 }
-
 exports.Requester = Requester;
 },{"../utils/async":"bajV","./request":"wg7F","../common/connection-handler":"T61P","./node_cache":"jg7K","./request/subscribe":"YpSC","../common/interfaces":"N9NG","./request/list":"duux","../common/permission":"nCNP","./request/invoke":"yD6V","./request/set":"wdMm","./request/remove":"Eaoe","./query/query":"DE2K"}],"BI8Z":[function(require,module,exports) {
 "use strict";
@@ -9770,9 +8794,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.PassiveChannel = void 0;
-
 const async_1 = require("../utils/async");
-
 class PassiveChannel {
   constructor(conn, connected = false) {
     this.onReceive = new async_1.Stream();
@@ -9784,46 +8806,36 @@ class PassiveChannel {
     this.conn = conn;
     this.connected = connected;
   }
-
   sendWhenReady(handler) {
     this.handler = handler;
     this.conn.requireSend();
   }
-
   getSendingData(currentTime, waitingAckId) {
     if (this.handler != null) {
-      let rslt = this.handler.getSendingData(currentTime, waitingAckId); // handler = null;
-
+      let rslt = this.handler.getSendingData(currentTime, waitingAckId);
+      // handler = null;
       return rslt;
     }
-
     return null;
   }
-
   get isReady() {
     return this._isReady;
   }
-
   set isReady(val) {
     this._isReady = val;
   }
-
   get onDisconnected() {
     return this.onDisconnectController.future;
   }
-
   get onConnected() {
     return this.onConnectController.future;
   }
-
   updateConnect() {
     if (this.connected) return;
     this.connected = true;
     this.onConnectController.complete(this);
   }
-
 }
-
 exports.PassiveChannel = PassiveChannel;
 },{"../utils/async":"bajV"}],"ZVYQ":[function(require,module,exports) {
 "use strict";
@@ -9834,13 +8846,10 @@ Object.defineProperty(exports, "__esModule", {
 exports.isBatchUpdating = exports.addBatchUpdateCallback = exports.endBatchUpdate = exports.startBatchUpdate = void 0;
 const callbacks = new Set();
 let updating = false;
-
 function startBatchUpdate() {
   updating = true;
 }
-
 exports.startBatchUpdate = startBatchUpdate;
-
 function endBatchUpdate() {
   for (let callback of callbacks) {
     try {
@@ -9849,22 +8858,16 @@ function endBatchUpdate() {
       console.error(e);
     }
   }
-
   updating = false;
 }
-
 exports.endBatchUpdate = endBatchUpdate;
-
 function addBatchUpdateCallback(callback) {
   callbacks.add(callback);
 }
-
 exports.addBatchUpdateCallback = addBatchUpdateCallback;
-
 function isBatchUpdating() {
   return updating;
 }
-
 exports.isBatchUpdating = isBatchUpdating;
 },{}],"IISz":[function(require,module,exports) {
 "use strict";
@@ -9873,21 +8876,13 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.WebSocketConnection = void 0;
-
 const interfaces_1 = require("../common/interfaces");
-
 const connection_channel_1 = require("../common/connection-channel");
-
 const async_1 = require("../utils/async");
-
 const codec_1 = require("../utils/codec");
-
 const logger_1 = require("../utils/logger");
-
 const batch_update_1 = require("./batch-update");
-
 let logger = logger_1.logger.tag('ws');
-
 class WebSocketConnection extends interfaces_1.Connection {
   /// clientLink is not needed when websocket works in server link
   constructor(socket, clientLink, onConnect, useCodec) {
@@ -9897,85 +8892,65 @@ class WebSocketConnection extends interfaces_1.Connection {
     this._onDoneHandled = false;
     this._dataReceiveTs = new Date().getTime();
     this._dataSentTs = this._dataReceiveTs;
-
     this.onPingTimer = () => {
       let currentTs = new Date().getTime();
-
       if (currentTs - this._dataReceiveTs >= 65000) {
         // close the connection if no message received in the last 65 seconds
         close();
         return;
       }
-
       if (currentTs - this._dataSentTs > 21000) {
         // add message if no data was sent in the last 21 seconds
         this.addConnCommand(null, null);
       }
     };
-
     this._openTs = Infinity;
-
     this._onOpen = e => {
       logger.trace('Connected');
       this._openTs = new Date().getTime();
-
       if (this.onConnect != null) {
         this.onConnect();
       }
-
       this._responderChannel.updateConnect();
-
       this._requesterChannel.updateConnect();
-
       this.socket.send(this.codec.blankData);
       this.requireSend();
     };
-
     this._onData = e => {
       if (this._onDisconnectedCompleter.isCompleted) {
         return;
       }
-
       if (!this._onRequestReadyCompleter.isCompleted) {
         this._onRequestReadyCompleter.complete(this._requesterChannel);
       }
-
       this._dataReceiveTs = new Date().getTime();
       let m;
       batch_update_1.startBatchUpdate();
-
       if (e.data instanceof ArrayBuffer) {
         try {
           let bytes = new Uint8Array(e.data);
           m = this.codec.decodeBinaryFrame(bytes);
           logger.trace(() => 'receive' + codec_1.DsJson.encode(m));
           this.checkBrowserThrottling();
-
           if (typeof m['salt'] === 'string') {
             this.clientLink.updateSalt(m['salt']);
           }
-
           let needAck = false;
-
           if (Array.isArray(m['responses']) && m['responses'].length > 0) {
-            needAck = true; // send responses to requester channel
-
+            needAck = true;
+            // send responses to requester channel
             this._requesterChannel.onReceive.add(m['responses']);
           }
-
           if (Array.isArray(m['requests']) && m['requests'].length > 0) {
-            needAck = true; // send requests to responder channel
-
+            needAck = true;
+            // send requests to responder channel
             this._responderChannel.onReceive.add(m['requests']);
           }
-
           if (typeof m['ack'] === 'number') {
             this.ack(m['ack']);
           }
-
           if (needAck) {
             let msgId = m['msg'];
-
             if (msgId != null) {
               this.addConnCommand('ack', msgId);
             }
@@ -9993,26 +8968,21 @@ class WebSocketConnection extends interfaces_1.Connection {
           logger.trace(() => 'receive' + codec_1.DsJson.encode(m));
           this.checkBrowserThrottling();
           let needAck = false;
-
           if (Array.isArray(m['responses']) && m['responses'].length > 0) {
-            needAck = true; // send responses to requester channel
-
+            needAck = true;
+            // send responses to requester channel
             this._requesterChannel.onReceive.add(m['responses']);
           }
-
           if (Array.isArray(m['requests']) && m['requests'].length > 0) {
-            needAck = true; // send requests to responder channel
-
+            needAck = true;
+            // send requests to responder channel
             this._responderChannel.onReceive.add(m['requests']);
           }
-
           if (typeof m['ack'] === 'number') {
             this.ack(m['ack']);
           }
-
           if (needAck) {
             let msgId = m['msg'];
-
             if (msgId != null) {
               this.addConnCommand('ack', msgId);
             }
@@ -10026,61 +8996,48 @@ class WebSocketConnection extends interfaces_1.Connection {
         }
       }
     };
-
     this.nextMsgId = 1;
     this._sending = false;
     this._authError = false;
-
     this._onDone = o => {
       if (o instanceof CloseEvent) {
         if (o.code === 1006) {
           this._authError = true;
         }
       }
-
       if (this._onDoneHandled) {
         return;
       }
-
       logger.trace('Disconnected');
-      this._onDoneHandled = true; //    logger.fine("socket disconnected");
-
+      this._onDoneHandled = true;
+      //    logger.fine("socket disconnected");
       if (!this._requesterChannel.onReceive.isClosed) {
         this._requesterChannel.onReceive.close();
       }
-
       if (!this._requesterChannel.onDisconnectController.isCompleted) {
         this._requesterChannel.onDisconnectController.complete(this._requesterChannel);
       }
-
       if (!this._responderChannel.onReceive.isClosed) {
         this._responderChannel.onReceive.close();
       }
-
       if (!this._responderChannel.onDisconnectController.isCompleted) {
         this._responderChannel.onDisconnectController.complete(this._responderChannel);
       }
-
       if (!this._onDisconnectedCompleter.isCompleted) {
         this._onDisconnectedCompleter.complete(this._authError);
       }
-
       if (this.pingTimer != null) {
         clearInterval(this.pingTimer);
         this.pingTimer = null;
       }
-
       this._sending = false;
     };
-
     this.socket = socket;
     this.clientLink = clientLink;
     this.onConnect = onConnect;
-
     if (useCodec != null) {
       this.codec = useCodec;
     }
-
     socket.binaryType = 'arraybuffer';
     this._responderChannel = new connection_channel_1.PassiveChannel(this);
     this._requesterChannel = new connection_channel_1.PassiveChannel(this);
@@ -10090,23 +9047,18 @@ class WebSocketConnection extends interfaces_1.Connection {
     socket.onopen = this._onOpen;
     this.pingTimer = setInterval(this.onPingTimer, 20000);
   }
-
   get responderChannel() {
     return this._responderChannel;
   }
-
   get requesterChannel() {
     return this._requesterChannel;
   }
-
   get onRequesterReady() {
     return this._onRequestReadyCompleter.future;
   }
-
   get onDisconnected() {
     return this._onDisconnectedCompleter.future;
   }
-
   requireSend() {
     if (!this._sending) {
       this._sending = true;
@@ -10114,59 +9066,46 @@ class WebSocketConnection extends interfaces_1.Connection {
         this._send();
       }, 0);
     }
-  } // sometimes setTimeout and setInterval is not run due to browser throttling
-
-
+  }
+  // sometimes setTimeout and setInterval is not run due to browser throttling
   checkBrowserThrottling() {
     if (!WebSocketConnection.checkBrowserThrottling) {
       return;
     }
-
     let currentTs = new Date().getTime();
-
     if (currentTs - this._dataSentTs > 25000) {
-      logger.trace('Throttling detected'); // timer is supposed to be run every 20 seconds, if that passes 25 seconds, force it to run
-
+      logger.trace('Throttling detected');
+      // timer is supposed to be run every 20 seconds, if that passes 25 seconds, force it to run
       this.onPingTimer();
-
       if (this._sending) {
         this._send();
       }
     }
   }
-
   get openTs() {
     return this._openTs;
-  } /// add server command, will be called only when used as server connection
-
-
+  }
+  /// add server command, will be called only when used as server connection
   addConnCommand(key, value) {
     if (this._msgCommand == null) {
       this._msgCommand = {};
     }
-
     if (key != null) {
       this._msgCommand[key] = value;
     }
-
     this.requireSend();
   }
-
   _send() {
     if (!this._sending) {
       return;
     }
-
     this._sending = false;
-
     if (this.socket.readyState !== WebSocket.OPEN) {
       return;
-    } //    logger.fine("browser sending");
-
-
+    }
+    //    logger.fine("browser sending");
     let needSend = false;
     let m;
-
     if (this._msgCommand != null) {
       m = this._msgCommand;
       needSend = true;
@@ -10174,75 +9113,58 @@ class WebSocketConnection extends interfaces_1.Connection {
     } else {
       m = {};
     }
-
     let pendingAck = [];
     let ts = new Date().getTime();
-
     let rslt = this._responderChannel.getSendingData(ts, this.nextMsgId);
-
     if (rslt != null) {
       if (rslt.messages.length > 0) {
         m['responses'] = rslt.messages;
         needSend = true;
       }
-
       if (rslt.processors.length > 0) {
         pendingAck = pendingAck.concat(rslt.processors);
       }
     }
-
     rslt = this._requesterChannel.getSendingData(ts, this.nextMsgId);
-
     if (rslt != null) {
       if (rslt.messages.length > 0) {
         m['requests'] = rslt.messages;
         needSend = true;
       }
-
       if (rslt.processors.length > 0) {
         pendingAck = pendingAck.concat(rslt.processors);
       }
     }
-
     if (needSend) {
       if (this.nextMsgId !== -1) {
         if (pendingAck.length > 0) {
           this.pendingAcks.push(new interfaces_1.ConnectionAckGroup(this.nextMsgId, ts, pendingAck));
         }
-
         m['msg'] = this.nextMsgId;
-
         if (this.nextMsgId < 0x7fffffff) {
           ++this.nextMsgId;
         } else {
           this.nextMsgId = 1;
         }
       }
-
       logger.trace(() => 'send' + codec_1.DsJson.encode(m));
       let encoded = this.codec.encodeFrame(m);
-
       try {
         this.socket.send(encoded);
       } catch (e) {
         console.error('Unable to send on socket', e);
         this.close();
       }
-
       this._dataSentTs = new Date().getTime();
     }
   }
-
   close() {
     if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
       this.socket.close();
     }
-
     this._onDone();
   }
-
 }
-
 exports.WebSocketConnection = WebSocketConnection;
 WebSocketConnection.checkBrowserThrottling = true;
 },{"../common/interfaces":"N9NG","../common/connection-channel":"BI8Z","../utils/async":"bajV","../utils/codec":"TRmg","../utils/logger":"sxdr","./batch-update":"ZVYQ"}],"w9XK":[function(require,module,exports) {
@@ -10251,105 +9173,81 @@ WebSocketConnection.checkBrowserThrottling = true;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.BrowserUserLink = void 0; /// a client link for both http and ws
-
+exports.BrowserUserLink = void 0;
+/// a client link for both http and ws
 const interfaces_1 = require("../common/interfaces");
-
 const async_1 = require("../utils/async");
-
 const requester_1 = require("../requester/requester");
-
 const browser_ws_conn_1 = require("./browser-ws-conn");
-
 const codec_1 = require("../utils/codec");
-
 class BrowserUserLink extends interfaces_1.ClientLink {
   constructor(wsUpdateUri, format = 'msgpack') {
     super();
     /** @ignore */
-
     this._onRequesterReadyCompleter = new async_1.Completer();
-    this.requester = new requester_1.Requester(); //  readonly responder: Responder;
-
+    this.requester = new requester_1.Requester();
+    //  readonly responder: Responder;
     /** @ignore */
-
     this.nonce = new interfaces_1.DummyECDH();
     /** @ignore */
-
     this._wsDelay = 1;
     /** @ignore */
-
     this.initWebsocket = (reconnect = true) => {
       this._initSocketTimer = null;
-
       try {
         let socket = new WebSocket(`${this.wsUpdateUri}?session=${BrowserUserLink.session}&format=${this.format}`);
         this._wsConnection = new browser_ws_conn_1.WebSocketConnection(socket, this, this._onConnect, codec_1.DsCodec.getCodec(this.format));
       } catch (err) {
         this.onDisConnect(reconnect);
         return;
-      } // if (this.responder != null) {
+      }
+      // if (this.responder != null) {
       //   this.responder.connection = this._wsConnection.responderChannel;
       // }
-
-
       if (this.requester != null) {
         this._wsConnection.onRequesterReady.then(channel => {
           this.requester.connection = channel;
-
           if (!this._onRequesterReadyCompleter.isCompleted) {
             this._onRequesterReadyCompleter.complete(this.requester);
           }
         });
       }
-
       this._wsConnection.onDisconnected.then(connection => {
         this.onDisConnect(reconnect);
       });
     };
-
     if (wsUpdateUri.startsWith('http')) {
       wsUpdateUri = `ws${wsUpdateUri.substring(4)}`;
     }
-
     this.wsUpdateUri = wsUpdateUri;
     this.format = format;
-
     if (window.location.hash.includes('dsa_json')) {
       this.format = 'json';
     }
   }
-
   get onRequesterReady() {
     return this._onRequesterReadyCompleter.future;
   }
   /** @ignore */
-
-
-  updateSalt(salt) {// do nothing
+  updateSalt(salt) {
+    // do nothing
   }
-
   _connect() {
     this.initWebsocket(false);
     return this.onRequesterReady;
   }
   /** @ignore */
-
-
   initWebsocketLater(ms) {
     if (this._initSocketTimer) return;
     this.onReconnect.add(new Date().getTime() + ms);
     this._initSocketTimer = setTimeout(this.initWebsocket, ms);
   }
-
   onDisConnect(reconnect) {
     this._onDisconnect();
-
     if (this._wsConnection == null) {
       // connection is closed
       return;
     }
-
     if (new Date().getTime() - this._wsConnection._openTs > 1000) {
       // has been connected for more than 1 second
       this._wsDelay = 1;
@@ -10362,31 +9260,24 @@ class BrowserUserLink extends interfaces_1.ClientLink {
       this.initWebsocketLater(5000);
     }
   }
-
   reconnect() {
     if (this._wsConnection != null) {
       this._wsConnection.socket.close();
     }
   }
-
   close() {
     if (this._initSocketTimer) {
       clearTimeout(this._initSocketTimer);
       this._initSocketTimer = null;
     }
-
     if (this._wsConnection != null) {
       this._wsConnection.close();
-
       this._wsConnection = null;
     }
   }
-
 }
-
 exports.BrowserUserLink = BrowserUserLink;
 /** @ignore */
-
 BrowserUserLink.session = Math.random().toString(16).substr(2, 8);
 },{"../common/interfaces":"N9NG","../utils/async":"bajV","../requester/requester":"L6cl","./browser-ws-conn":"IISz","../utils/codec":"TRmg"}],"vwPC":[function(require,module,exports) {
 "use strict";
@@ -10394,41 +9285,32 @@ BrowserUserLink.session = Math.random().toString(16).substr(2, 8);
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.decodeEnums = exports.decodeNodeName = exports.encodeNodeName = void 0; // need this table to encode string in upper case
-
+exports.decodeEnums = exports.decodeNodeName = exports.encodeNodeName = void 0;
+// need this table to encode string in upper case
 const ENCODE_TABLE = '0123456789ABCDEF'.split('');
-
 function escapeNodeName(match) {
   let code = match.charCodeAt(0);
   return `%${ENCODE_TABLE[code / 16 >> 0]}${ENCODE_TABLE[code % 16]}`;
 }
-
 function encodeNodeName(name) {
   return name.replace(/[\u0000-\u001f/\\?*:|"<>%,\u007f]/g, escapeNodeName);
 }
-
 exports.encodeNodeName = encodeNodeName;
-
 function decodeNodeName(name) {
   return decodeURIComponent(name);
 }
-
 exports.decodeNodeName = decodeNodeName;
 /**
  * decode dsa enum string in the format of [optionA,optionB,optionC]
  * @param enums
  */
-
 function decodeEnums(enums) {
   let targetString = enums;
-
   if (targetString.startsWith('[') && targetString.endsWith(']')) {
     targetString = targetString.substring(1, targetString.length - 1);
   }
-
   return targetString.split(',').map(s => decodeNodeName(s));
 }
-
 exports.decodeEnums = decodeEnums;
 },{}],"txRo":[function(require,module,exports) {
 "use strict";
@@ -10437,11 +9319,8 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.DSLink = void 0;
-
 const browser_user_link_1 = require("./src/browser/browser-user-link");
-
 var node_name_1 = require("./src/utils/node-name");
-
 Object.defineProperty(exports, "encodeNodeName", {
   enumerable: true,
   get: function () {
@@ -10454,11 +9333,9 @@ Object.defineProperty(exports, "decodeNodeName", {
     return node_name_1.decodeNodeName;
   }
 });
-
 if (Object.isExtensible(window)) {
   window.DSLink = browser_user_link_1.BrowserUserLink;
 }
-
 exports.DSLink = browser_user_link_1.BrowserUserLink;
 },{"./src/browser/browser-user-link":"w9XK","./src/utils/node-name":"vwPC"}]},{},["txRo"], null)
 //# sourceMappingURL=/web.js.map

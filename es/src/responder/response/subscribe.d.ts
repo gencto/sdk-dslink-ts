@@ -35,6 +35,8 @@ export declare class ValueSubscriber {
     set caching(val: boolean);
     cachingQueue: boolean;
     _persist: boolean;
+    _lastCallTimestamp: number;
+    static readonly CALL_INTERVAL_MS = 100;
     set persist(val: boolean);
     constructor(response: SubscribeResponse, node: NodeState, sid: number, qos: number);
     _isCacheValid: boolean;

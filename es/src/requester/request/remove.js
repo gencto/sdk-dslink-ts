@@ -16,8 +16,12 @@ export class RemoveController {
         return this.completer.future;
     }
     onUpdate(status, updates, columns, meta, error) {
-        // TODO implement error
-        this.completer.complete(new RequesterUpdate(status));
+        if (error) {
+            this.completer.completeError(error);
+        }
+        else {
+            this.completer.complete(new RequesterUpdate(status));
+        }
     }
     onDisconnect() { }
     onReconnect() { }

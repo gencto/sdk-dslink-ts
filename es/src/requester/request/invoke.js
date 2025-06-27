@@ -143,7 +143,17 @@ export class InvokeController {
         if (meta != null && typeof meta['mode'] === 'string') {
             this.mode = meta['mode'];
         }
-        // TODO: implement error
+        if (error != null) {
+            streamStatus = 'closed';
+            // Make sure _cachedColumns is initialized before passing to RequesterInvokeUpdate
+            if (!this._cachedColumns) {
+                this._cachedColumns = InvokeController.getNodeColumns(this.node) || [];
+            }
+            this._stream.add(new RequesterInvokeUpdate(null, null, this._cachedColumns, streamStatus, meta, error));
+            this._stream.close(); // Ensure stream is closed on error
+            this.lastStatus = streamStatus;
+            return; // Stop further processing if there's an error
+        }
         if (columns != null) {
             if (this._cachedColumns == null || this.mode === 'refresh') {
                 this._cachedColumns = TableColumn.parseColumns(columns);
@@ -155,15 +165,14 @@ export class InvokeController {
         else if (this._cachedColumns == null) {
             this._cachedColumns = InvokeController.getNodeColumns(this.node);
         }
-        if (error != null) {
-            streamStatus = 'closed';
-            this._stream.add(new RequesterInvokeUpdate(null, null, null, streamStatus, meta, error));
-        }
-        else if (updates != null || meta != null || streamStatus !== this.lastStatus) {
+        // Error handling is done above, so this part focuses on normal updates
+        if (updates != null || meta != null || streamStatus !== this.lastStatus) {
             this._stream.add(new RequesterInvokeUpdate(updates, columns, this._cachedColumns, streamStatus, meta));
         }
         this.lastStatus = streamStatus;
-        if (streamStatus === 'closed') {
+        // Stream closure on error is handled above.
+        // This handles closure for non-error "closed" status.
+        if (streamStatus === 'closed' && !error) {
             this._stream.close();
         }
     }

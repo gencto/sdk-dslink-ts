@@ -22,7 +22,6 @@ export class SetController {
         return this.completer.future;
     }
     onUpdate(status, updates, columns, meta, error) {
-        // TODO implement error
         this.completer.complete(new RequesterUpdate(status, error));
     }
     onDisconnect() { }

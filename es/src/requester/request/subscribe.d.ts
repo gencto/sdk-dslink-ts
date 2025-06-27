@@ -19,6 +19,7 @@ export declare class ReqSubscribeListener implements Closable {
 /** @ignore */
 export declare class SubscribeController implements RequestUpdater {
     request: SubscribeRequest;
+    disconnected: boolean;
     onDisconnect(): void;
     onReconnect(): void;
     onUpdate(status: string, updates: any[], columns: any[], meta: {

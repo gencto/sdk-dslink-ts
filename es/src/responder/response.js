@@ -26,7 +26,9 @@ export class Response {
         this._pendingSending = false;
     }
     ackReceived(receiveAckId, startTime, currentTime) {
-        // TODO: implement ackReceived
+        // Basic acknowledgment logging. Specific logic for handling ACKs (e.g., clearing queues)
+        // would depend on the broader ACK strategy in the system.
+        console.log(`Response RID ${this.rid}: Received ACK ID ${receiveAckId}. Start time: ${startTime}, Current time: ${currentTime}`);
     }
 }
 //# sourceMappingURL=response.js.map
